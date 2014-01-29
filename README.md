@@ -10,7 +10,7 @@ http://www.mypebblefaces.com/view?fID=290&aName=Habib&pageTitle=MarioTime&auID=2
 
 Download (Pebble SDK 1.x): [pebble-mario-1.2.pbw](https://s3-eu-west-1.amazonaws.com/www.ddenis.info/pebble-mario/pebble-mario-1.2.pbw)
 
-Download (Pebble SDK 2.0): [pebble-mario-2.0.pbw](https://s3-eu-west-1.amazonaws.com/www.ddenis.info/pebble-mario/pebble-mario-2.0.pbw)
+Download (Pebble SDK 2.0): [pebble-mario-2.1.pbw](https://s3-eu-west-1.amazonaws.com/www.ddenis.info/pebble-mario/pebble-mario-2.1.pbw)
 
 
 Animation:
