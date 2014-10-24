@@ -235,7 +235,7 @@ void battery_update_callback(Layer *layer, GContext *ctx)
 				{
 						graphics_draw_bitmap_in_rect(ctx, battery_bmp, image_rect);
 						graphics_context_set_fill_color(ctx, main_color);
-						graphics_fill_rect(ctx, GRect(1, 2, charge_state.charge_percent / 10, 6), 0, GCornerNone);
+						graphics_fill_rect(ctx, GRect(2, 3, charge_state.charge_percent / 10, 4), 0, GCornerNone);
 				} else
 						graphics_draw_bitmap_in_rect(ctx, battery_charging_bmp, image_rect);
 		}
@@ -348,7 +348,7 @@ void handle_init()
     mario_up_rect = GRect(32, BLOCK_SIZE + BLOCK_LAYER_EXTRA - BLOCK_SQUEEZE, 80, 80);
     ground_rect = GRect(0, 168-GROUND_HEIGHT, 144, 168);
 		no_phone_rect = GRect(5, 128, 10, 10);
-		battery_rect = GRect(126, 129, 13, 10);
+		battery_rect = GRect(124, 129, 15, 10);
 
     hour_up_rect = GRect(5, -10, 40, 40);
     hour_normal_rect = GRect(5, 5 + BLOCK_LAYER_EXTRA, 40, 40);

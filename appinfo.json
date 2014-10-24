@@ -10,7 +10,7 @@
   },
 	"capabilities": [ "configurable" ],
 	"appKeys": {
-	"config_show_no_phone": 0,
+			"config_show_no_phone": 0,
 			"config_show_battery": 1,
 			"config_vibe": 2,
 			"config_inverse": 3
