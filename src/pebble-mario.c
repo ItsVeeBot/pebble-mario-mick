@@ -22,6 +22,9 @@
 
 // #define INVERSED_COLORS
 // #define DEMO // display fake time. Good for taking screenshots of the watchface.
+#define SHOW_NO_PHONE
+#define SHOW_BATTERY
+#define VIBE_ON_DISCONNECT
 
 Window *window;
 
@@ -31,6 +34,8 @@ TextLayer *text_hour_layer;
 TextLayer *text_minute_layer;
 Layer *ground_layer;
 TextLayer *date_layer;
+Layer *no_phone_layer;
+Layer *battery_layer;
 
 static char hour_text[]   = "00";
 static char minute_text[] = "00";
@@ -41,6 +46,8 @@ GRect blocks_up_rect;
 GRect mario_down_rect;
 GRect mario_up_rect;
 GRect ground_rect;
+GRect no_phone_rect;
+GRect battery_rect;
 
 GRect hour_up_rect;
 GRect hour_normal_rect;
@@ -55,6 +62,9 @@ static int mario_is_down = 1;
 GBitmap *mario_normal_bmp;
 GBitmap *mario_jump_bmp;
 GBitmap *ground_bmp;
+GBitmap *no_phone_bmp;
+GBitmap *battery_bmp;
+GBitmap *battery_charging_bmp;
 
 PropertyAnimation *mario_animation_beg;
 PropertyAnimation *mario_animation_end;
@@ -192,6 +202,52 @@ void ground_update_callback(Layer *layer, GContext *ctx)
     text_layer_set_text(date_layer, date_text);
 }
 
+void no_phone_update_callback(Layer *layer, GContext *ctx)
+{
+#ifdef SHOW_NO_PHONE
+		if (!bluetooth_connection_service_peek())
+		{
+				GRect image_rect = no_phone_bmp->bounds;
+				graphics_draw_bitmap_in_rect(ctx, no_phone_bmp, image_rect);
+		}
+#endif
+}
+
+void bluetooth_connection_callback(bool connected)
+{
+		layer_mark_dirty(no_phone_layer);
+#ifdef VIBE_ON_DISCONNECT
+		if (!connected) {		
+				static const uint32_t const segments[] = { 100, 200, 100, 200, 100 };
+				VibePattern pat = {
+						.durations = segments,
+						.num_segments = ARRAY_LENGTH(segments),
+				};				
+				vibes_enqueue_custom_pattern(pat);
+		}
+#endif
+}
+
+void battery_update_callback(Layer *layer, GContext *ctx)
+{
+#ifdef SHOW_BATTERY
+		GRect image_rect = battery_bmp->bounds;
+		BatteryChargeState charge_state = battery_state_service_peek();
+		if (!charge_state.is_charging)
+		{
+				graphics_draw_bitmap_in_rect(ctx, battery_bmp, image_rect);
+				graphics_context_set_fill_color(ctx, MainColor);
+				graphics_fill_rect(ctx, GRect(1, 2, charge_state.charge_percent / 10, 6), 0, GCornerNone);
+		} else
+				graphics_draw_bitmap_in_rect(ctx, battery_charging_bmp, image_rect);
+#endif
+}
+
+void handle_battery(BatteryChargeState charge_state)
+{
+		layer_mark_dirty(battery_layer);
+}
+
 void handle_init()
 {
     window = window_create();
@@ -204,6 +260,8 @@ void handle_init()
     mario_down_rect = GRect(32, 168-GROUND_HEIGHT-80, 80, 80);
     mario_up_rect = GRect(32, BLOCK_SIZE + BLOCK_LAYER_EXTRA - BLOCK_SQUEEZE, 80, 80);
     ground_rect = GRect(0, 168-GROUND_HEIGHT, 144, 168);
+		no_phone_rect = GRect(5, 128, 10, 10);
+		battery_rect = GRect(126, 128, 13, 10);
 
     hour_up_rect = GRect(5, -10, 40, 40);
     hour_normal_rect = GRect(5, 5 + BLOCK_LAYER_EXTRA, 40, 40);
@@ -215,16 +273,22 @@ void handle_init()
     blocks_layer = layer_create(blocks_down_rect);
     mario_layer = layer_create(mario_down_rect);
     ground_layer = layer_create(ground_rect);
+		no_phone_layer = layer_create(no_phone_rect);
+		battery_layer = layer_create(battery_rect);
 
     layer_set_update_proc(blocks_layer, &blocks_update_callback);
     layer_set_update_proc(mario_layer, &mario_update_callback);
     layer_set_update_proc(ground_layer, &ground_update_callback);
+		layer_set_update_proc(no_phone_layer, &no_phone_update_callback);
+		layer_set_update_proc(battery_layer, &battery_update_callback);
 
     Layer *window_layer = window_get_root_layer(window);
 
     layer_add_child(window_layer, blocks_layer);
     layer_add_child(window_layer, mario_layer);
     layer_add_child(window_layer, ground_layer);
+		layer_add_child(window_layer, no_phone_layer);
+		layer_add_child(window_layer, battery_layer);
 
     text_hour_layer = text_layer_create(hour_normal_rect);
     text_layer_set_text_color(text_hour_layer, MainColor);
@@ -252,10 +316,16 @@ void handle_init()
     mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
     mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
     ground_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_GROUND);
+		no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE);
+		battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY);
+		battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING);
 #else
     mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL_INVERSED);
     mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP_INVERSED);
     ground_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_GROUND_INVERSED);
+		no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE_INVERSED);
+		battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_INVERSED);
+		battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING_INVERSED);
 #endif
 
 #if defined(DEMO)
@@ -264,6 +334,9 @@ void handle_init()
     #define MARIO_TIME_UNIT MINUTE_UNIT
 #endif
     tick_timer_service_subscribe(MARIO_TIME_UNIT, handle_tick);
+		
+		bluetooth_connection_service_subscribe(bluetooth_connection_callback);
+		battery_state_service_subscribe(handle_battery);
 }
 
 void handle_deinit()
@@ -284,6 +357,9 @@ void handle_deinit()
     gbitmap_destroy(mario_normal_bmp);
     gbitmap_destroy(mario_jump_bmp);
     gbitmap_destroy(ground_bmp);
+		gbitmap_destroy(no_phone_bmp);
+		gbitmap_destroy(battery_bmp);
+		gbitmap_destroy(battery_charging_bmp);		
 
     text_layer_destroy(date_layer);
     text_layer_destroy(text_minute_layer);
@@ -292,8 +368,13 @@ void handle_deinit()
     layer_destroy(ground_layer);
     layer_destroy(mario_layer);
     layer_destroy(blocks_layer);
+		layer_destroy(no_phone_layer);
+		layer_destroy(battery_layer);
 
     window_destroy(window);
+		
+		bluetooth_connection_service_unsubscribe();
+		battery_state_service_unsubscribe();
 }
 
 void mario_down_animation_started(Animation *animation, void *data)
