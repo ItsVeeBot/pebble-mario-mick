@@ -20,11 +20,7 @@
 #include <pebble.h>
 #include <time.h>
 
-// #define INVERSED_COLORS
 // #define DEMO // display fake time. Good for taking screenshots of the watchface.
-#define SHOW_NO_PHONE
-#define SHOW_BATTERY
-#define VIBE_ON_DISCONNECT
 
 Window *window;
 
@@ -59,12 +55,12 @@ GRect minute_down_rect;
 static int mario_is_down = 1;
 
 // TODO: I can really make use of BitmapLayer here
-GBitmap *mario_normal_bmp;
-GBitmap *mario_jump_bmp;
-GBitmap *ground_bmp;
-GBitmap *no_phone_bmp;
-GBitmap *battery_bmp;
-GBitmap *battery_charging_bmp;
+GBitmap *mario_normal_bmp = NULL;
+GBitmap *mario_jump_bmp = NULL;
+GBitmap *ground_bmp = NULL;
+GBitmap *no_phone_bmp = NULL;
+GBitmap *battery_bmp = NULL;
+GBitmap *battery_charging_bmp = NULL;
 
 PropertyAnimation *mario_animation_beg;
 PropertyAnimation *mario_animation_end;
@@ -77,6 +73,11 @@ PropertyAnimation *hour_animation_slide_in;
 PropertyAnimation *minute_animation_slide_away;
 PropertyAnimation *minute_animation_slide_in;
 
+bool config_show_no_phone = true;
+bool config_show_battery = true;
+bool config_vibe = false;
+bool config_inversed = false;
+
 #define BLOCK_SIZE 50
 #define BLOCK_LAYER_EXTRA 3
 #define BLOCK_SQUEEZE 10
@@ -85,13 +86,13 @@ PropertyAnimation *minute_animation_slide_in;
 #define CLOCK_ANIMATION_DURATION 150
 #define GROUND_HEIGHT 26
 
-#ifndef INVERSED_COLORS
-#  define MainColor GColorBlack
-#  define BackgroundColor GColorWhite
-#else
-#  define MainColor GColorWhite
-#  define BackgroundColor GColorBlack
-#endif
+#define MSG_SHOW_NO_PHONE 0
+#define MSG_SHOW_BATTERY 1
+#define MSG_VIBE 2
+#define MSG_INVERSE 3
+
+GColor main_color = GColorBlack;
+GColor back_color = GColorWhite;
 
 #if defined(DEMO)
 static int demo_advance_time = 0;
@@ -103,14 +104,14 @@ void draw_block(GContext *ctx, GRect rect, uint8_t width)
 {
     static const uint8_t radius = 1;
 
-    graphics_context_set_fill_color(ctx, MainColor);
+    graphics_context_set_fill_color(ctx, main_color);
     graphics_fill_rect(ctx, rect, radius, GCornersAll);
 
     rect.origin.x += width;
     rect.origin.y += width;
     rect.size.w -= width*2;
     rect.size.h -= width*2;
-    graphics_context_set_fill_color(ctx, BackgroundColor);
+    graphics_context_set_fill_color(ctx, back_color);
     graphics_fill_rect(ctx, rect, radius, GCornersAll);
 
     static const uint8_t dot_offset = 3;
@@ -119,7 +120,7 @@ void draw_block(GContext *ctx, GRect rect, uint8_t width)
 
     GRect dot_rect;
 
-    graphics_context_set_fill_color(ctx, MainColor);
+    graphics_context_set_fill_color(ctx, main_color);
 
     // top left dot
     dot_rect = GRect(rect.origin.x + dot_offset, rect.origin.y + dot_offset,
@@ -204,20 +205,17 @@ void ground_update_callback(Layer *layer, GContext *ctx)
 
 void no_phone_update_callback(Layer *layer, GContext *ctx)
 {
-#ifdef SHOW_NO_PHONE
-		if (!bluetooth_connection_service_peek())
+		if (config_show_no_phone && !bluetooth_connection_service_peek())
 		{
 				GRect image_rect = no_phone_bmp->bounds;
 				graphics_draw_bitmap_in_rect(ctx, no_phone_bmp, image_rect);
 		}
-#endif
 }
 
 void bluetooth_connection_callback(bool connected)
 {
 		layer_mark_dirty(no_phone_layer);
-#ifdef VIBE_ON_DISCONNECT
-		if (!connected) {		
+		if (config_vibe && !connected) {		
 				static const uint32_t const segments[] = { 100, 200, 100, 200, 100 };
 				VibePattern pat = {
 						.durations = segments,
@@ -225,22 +223,22 @@ void bluetooth_connection_callback(bool connected)
 				};				
 				vibes_enqueue_custom_pattern(pat);
 		}
-#endif
 }
 
 void battery_update_callback(Layer *layer, GContext *ctx)
 {
-#ifdef SHOW_BATTERY
-		GRect image_rect = battery_bmp->bounds;
-		BatteryChargeState charge_state = battery_state_service_peek();
-		if (!charge_state.is_charging)
+		if (config_show_battery)
 		{
-				graphics_draw_bitmap_in_rect(ctx, battery_bmp, image_rect);
-				graphics_context_set_fill_color(ctx, MainColor);
-				graphics_fill_rect(ctx, GRect(1, 2, charge_state.charge_percent / 10, 6), 0, GCornerNone);
-		} else
-				graphics_draw_bitmap_in_rect(ctx, battery_charging_bmp, image_rect);
-#endif
+				GRect image_rect = battery_bmp->bounds;
+				BatteryChargeState charge_state = battery_state_service_peek();
+				if (!charge_state.is_charging)
+				{
+						graphics_draw_bitmap_in_rect(ctx, battery_bmp, image_rect);
+						graphics_context_set_fill_color(ctx, main_color);
+						graphics_fill_rect(ctx, GRect(1, 2, charge_state.charge_percent / 10, 6), 0, GCornerNone);
+				} else
+						graphics_draw_bitmap_in_rect(ctx, battery_charging_bmp, image_rect);
+		}
 }
 
 void handle_battery(BatteryChargeState charge_state)
@@ -248,12 +246,101 @@ void handle_battery(BatteryChargeState charge_state)
 		layer_mark_dirty(battery_layer);
 }
 
+void load_bitmaps()
+{
+		if (mario_normal_bmp)
+				gbitmap_destroy(mario_normal_bmp);
+		if (mario_jump_bmp)
+				gbitmap_destroy(mario_jump_bmp);
+    if (ground_bmp)
+				gbitmap_destroy(ground_bmp);
+		if (no_phone_bmp)
+				gbitmap_destroy(no_phone_bmp);
+		if (battery_bmp)
+				gbitmap_destroy(battery_bmp);
+		if (battery_charging_bmp)
+				gbitmap_destroy(battery_charging_bmp);
+
+		if (!config_inversed)
+		{
+				mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
+				mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
+				ground_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_GROUND);
+				no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE);
+				battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY);
+				battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING);
+		} else {
+				mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL_INVERSED);
+				mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP_INVERSED);
+				ground_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_GROUND_INVERSED);
+				no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE_INVERSED);
+				battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_INVERSED);
+				battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING_INVERSED);
+		}
+}
+
+void update_colors()
+{
+		if (!config_inversed)
+		{
+				main_color = GColorBlack;
+				back_color = GColorWhite;
+		} else {
+				main_color = GColorWhite;
+				back_color = GColorBlack;
+		}
+		
+		window_set_background_color(window, back_color);
+		text_layer_set_text_color(text_hour_layer, main_color);
+		text_layer_set_text_color(text_minute_layer, main_color);
+		text_layer_set_text_color(date_layer, back_color);
+		text_layer_set_background_color(date_layer, main_color);
+}
+
+void in_received_handler(DictionaryIterator *received, void *context) {
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Received config");
+		Tuple *tuple = dict_find(received, MSG_SHOW_NO_PHONE);
+		if (tuple) {
+				config_show_no_phone = (strcmp(tuple->value->cstring, "true") == 0);
+				layer_mark_dirty(no_phone_layer);
+		}
+		tuple = dict_find(received, MSG_SHOW_BATTERY);
+		if (tuple) {
+				config_show_battery = (strcmp(tuple->value->cstring, "true") == 0);
+				layer_mark_dirty(battery_layer);
+		}
+		tuple = dict_find(received, MSG_VIBE);
+		if (tuple) {
+				config_vibe = (strcmp(tuple->value->cstring, "true") == 0);
+		}
+		tuple = dict_find(received, MSG_INVERSE);
+		if (tuple) {
+				config_inversed = (strcmp(tuple->value->cstring, "true") == 0);
+				load_bitmaps();
+				update_colors();
+		}
+		persist_write_bool(MSG_SHOW_NO_PHONE, config_show_no_phone);
+		persist_write_bool(MSG_SHOW_BATTERY, config_show_battery);
+		persist_write_bool(MSG_VIBE, config_vibe);
+		persist_write_bool(MSG_INVERSE, config_inversed);
+}
+
 void handle_init()
 {
+		if (persist_exists(MSG_SHOW_NO_PHONE))
+				config_show_no_phone = persist_read_bool(MSG_SHOW_NO_PHONE);
+		if (persist_exists(MSG_SHOW_BATTERY))
+				config_show_battery = persist_read_bool(MSG_SHOW_BATTERY);
+		if (persist_exists(MSG_VIBE))
+				config_vibe = persist_read_bool(MSG_VIBE);
+		if (persist_exists(MSG_INVERSE))
+				config_inversed = persist_read_bool(MSG_INVERSE);
+
+		app_message_register_inbox_received(in_received_handler);
+		app_message_open(64, 64);
+
     window = window_create();
     window_stack_push(window, true /* Animated */);
-
-    window_set_background_color(window, BackgroundColor);
 
     blocks_down_rect = GRect(22, 7, BLOCK_SIZE*2, BLOCK_SIZE + BLOCK_LAYER_EXTRA);
     blocks_up_rect = GRect(22, 0, BLOCK_SIZE*2, BLOCK_SIZE + BLOCK_LAYER_EXTRA - BLOCK_SQUEEZE);
@@ -261,7 +348,7 @@ void handle_init()
     mario_up_rect = GRect(32, BLOCK_SIZE + BLOCK_LAYER_EXTRA - BLOCK_SQUEEZE, 80, 80);
     ground_rect = GRect(0, 168-GROUND_HEIGHT, 144, 168);
 		no_phone_rect = GRect(5, 128, 10, 10);
-		battery_rect = GRect(126, 128, 13, 10);
+		battery_rect = GRect(126, 129, 13, 10);
 
     hour_up_rect = GRect(5, -10, 40, 40);
     hour_normal_rect = GRect(5, 5 + BLOCK_LAYER_EXTRA, 40, 40);
@@ -291,14 +378,12 @@ void handle_init()
 		layer_add_child(window_layer, battery_layer);
 
     text_hour_layer = text_layer_create(hour_normal_rect);
-    text_layer_set_text_color(text_hour_layer, MainColor);
     text_layer_set_background_color(text_hour_layer, GColorClear);
     text_layer_set_text_alignment(text_hour_layer, GTextAlignmentCenter);
     text_layer_set_font(text_hour_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
     layer_add_child(blocks_layer, (Layer *)text_hour_layer);
 
     text_minute_layer = text_layer_create(GRect(55, 5, 40, 40));
-    text_layer_set_text_color(text_minute_layer, MainColor);
     text_layer_set_background_color(text_minute_layer, GColorClear);
     text_layer_set_text_alignment(text_minute_layer, GTextAlignmentCenter);
     text_layer_set_font(text_minute_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
@@ -306,27 +391,12 @@ void handle_init()
 
     GRect date_rect = GRect(30, 6, 144-30*2, ground_rect.size.h-6*2);
     date_layer = text_layer_create(date_rect);
-    text_layer_set_text_color(date_layer, BackgroundColor);
-    text_layer_set_background_color(date_layer, MainColor);
     text_layer_set_text_alignment(date_layer, GTextAlignmentCenter);
     text_layer_set_font(date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
     layer_add_child(ground_layer, (Layer *)date_layer);
 
-#ifndef INVERSED_COLORS
-    mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
-    mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
-    ground_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_GROUND);
-		no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE);
-		battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY);
-		battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING);
-#else
-    mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL_INVERSED);
-    mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP_INVERSED);
-    ground_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_GROUND_INVERSED);
-		no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE_INVERSED);
-		battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_INVERSED);
-		battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING_INVERSED);
-#endif
+		update_colors();
+		load_bitmaps();
 
 #if defined(DEMO)
     #define MARIO_TIME_UNIT SECOND_UNIT
@@ -375,6 +445,7 @@ void handle_deinit()
 		
 		bluetooth_connection_service_unsubscribe();
 		battery_state_service_unsubscribe();
+		app_message_deregister_callbacks();
 }
 
 void mario_down_animation_started(Animation *animation, void *data)
