@@ -4,7 +4,7 @@
   "longName": "Mario",
   "companyName": "Denis Dzyubenko",
   "versionCode": 3,
-  "versionLabel": "2.1.0",
+  "versionLabel": "2.1",
   "watchapp": {
     "watchface": true
   },
