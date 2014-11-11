@@ -32,6 +32,7 @@ Layer *ground_layer;
 TextLayer *date_layer;
 Layer *no_phone_layer;
 Layer *battery_layer;
+Layer *phone_battery_layer;
 
 static char hour_text[]   = "00";
 static char minute_text[] = "00";
@@ -44,6 +45,7 @@ GRect mario_up_rect;
 GRect ground_rect;
 GRect no_phone_rect;
 GRect battery_rect;
+GRect phone_battery_rect;
 
 GRect hour_up_rect;
 GRect hour_normal_rect;
@@ -77,6 +79,7 @@ bool config_show_no_phone = true;
 bool config_show_battery = true;
 bool config_vibe = false;
 bool config_inversed = false;
+int phone_battery_level = -1;
 
 #define BLOCK_SIZE 50
 #define BLOCK_LAYER_EXTRA 3
@@ -90,6 +93,9 @@ bool config_inversed = false;
 #define MSG_SHOW_BATTERY 1
 #define MSG_VIBE 2
 #define MSG_INVERSE 3
+#define MSG_BATTERY_REQUEST 4
+#define MSG_BATTERY_ANSWER 5
+#define SHOW_PHONE_BATTERY
 
 GColor main_color = GColorBlack;
 GColor back_color = GColorWhite;
@@ -99,6 +105,17 @@ static int demo_advance_time = 0;
 #endif
 
 void handle_tick(struct tm *tick_time, TimeUnits units_changed);
+
+static void request_phone_battery()
+{
+#ifdef SHOW_PHONE_BATTERY
+	DictionaryIterator *iter;
+	app_message_outbox_begin(&iter);
+	Tuplet tupleRequest = TupletInteger(MSG_BATTERY_REQUEST, 0);
+	dict_write_tuplet(iter, &tupleRequest);
+	app_message_outbox_send();
+#endif
+}
 
 void draw_block(GContext *ctx, GRect rect, uint8_t width)
 {
@@ -223,6 +240,22 @@ void bluetooth_connection_callback(bool connected)
 				};				
 				vibes_enqueue_custom_pattern(pat);
 		}
+		
+		if (connected)
+			request_phone_battery();
+		else phone_battery_level = -1;
+		layer_mark_dirty(phone_battery_layer);
+}
+
+void phone_battery_update_callback(Layer *layer, GContext *ctx)
+{
+		if (phone_battery_level >= 0)
+		{
+				GRect image_rect = battery_bmp->bounds;
+				graphics_draw_bitmap_in_rect(ctx, battery_bmp, image_rect);
+				graphics_context_set_fill_color(ctx, main_color);
+				graphics_fill_rect(ctx, GRect(2, 3, phone_battery_level, 4), 0, GCornerNone);
+		}
 }
 
 void battery_update_callback(Layer *layer, GContext *ctx)
@@ -319,6 +352,11 @@ void in_received_handler(DictionaryIterator *received, void *context) {
 				load_bitmaps();
 				update_colors();
 		}
+		tuple = dict_find(received, MSG_BATTERY_ANSWER);
+		if (tuple) {
+				phone_battery_level = tuple->value->int8;
+				layer_mark_dirty(phone_battery_layer);
+		}
 		persist_write_bool(MSG_SHOW_NO_PHONE, config_show_no_phone);
 		persist_write_bool(MSG_SHOW_BATTERY, config_show_battery);
 		persist_write_bool(MSG_VIBE, config_vibe);
@@ -349,6 +387,7 @@ void handle_init()
     ground_rect = GRect(0, 168-GROUND_HEIGHT, 144, 168);
 		no_phone_rect = GRect(5, 128, 10, 10);
 		battery_rect = GRect(124, 129, 15, 10);
+		phone_battery_rect = GRect(6, 129, 15, 10);
 
     hour_up_rect = GRect(5, -10, 40, 40);
     hour_normal_rect = GRect(5, 5 + BLOCK_LAYER_EXTRA, 40, 40);
@@ -362,12 +401,14 @@ void handle_init()
     ground_layer = layer_create(ground_rect);
 		no_phone_layer = layer_create(no_phone_rect);
 		battery_layer = layer_create(battery_rect);
+		phone_battery_layer = layer_create(phone_battery_rect);
 
     layer_set_update_proc(blocks_layer, &blocks_update_callback);
     layer_set_update_proc(mario_layer, &mario_update_callback);
     layer_set_update_proc(ground_layer, &ground_update_callback);
 		layer_set_update_proc(no_phone_layer, &no_phone_update_callback);
 		layer_set_update_proc(battery_layer, &battery_update_callback);
+		layer_set_update_proc(phone_battery_layer, &phone_battery_update_callback);
 
     Layer *window_layer = window_get_root_layer(window);
 
@@ -376,6 +417,7 @@ void handle_init()
     layer_add_child(window_layer, ground_layer);
 		layer_add_child(window_layer, no_phone_layer);
 		layer_add_child(window_layer, battery_layer);
+		layer_add_child(window_layer, phone_battery_layer);
 
     text_hour_layer = text_layer_create(hour_normal_rect);
     text_layer_set_background_color(text_hour_layer, GColorClear);
@@ -403,10 +445,14 @@ void handle_init()
 #else
     #define MARIO_TIME_UNIT MINUTE_UNIT
 #endif
-    tick_timer_service_subscribe(MARIO_TIME_UNIT, handle_tick);
-		
+
+		phone_battery_level = -1;
+
+    tick_timer_service_subscribe(MARIO_TIME_UNIT, handle_tick);		
 		bluetooth_connection_service_subscribe(bluetooth_connection_callback);
 		battery_state_service_subscribe(handle_battery);
+		
+		request_phone_battery();
 }
 
 void handle_deinit()
@@ -630,6 +676,9 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed)
     animation_schedule((Animation *)block_animation_beg);
     animation_schedule((Animation *)hour_animation_slide_away);
     animation_schedule((Animation *)minute_animation_slide_away);
+		
+		if ((tick_time->tm_min % 30 == 0) /*|| (phone_battery_level < 0)*/)
+			request_phone_battery();
 }
 
 int main(void)
