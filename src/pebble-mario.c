@@ -1,4 +1,5 @@
 // Copyright (C) 2013 Denis Dzyubenko
+// Copyright (C) 2015 Alexey Avdyukhin
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -14,190 +15,230 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
-// You may contact the author at denis@ddenis.info
+// You may contact the author of original watchface at denis@ddenis.info
+// Author of color mod for Pebble Time: clusterrr@clusterrr.com
 //
 
 #include <pebble.h>
 #include <time.h>
 
-// #define DEMO // display fake time. Good for taking screenshots of the watchface.
+//#define DEMO // display fake time. Good for taking screenshots of the watchface.
+//#define DEMO_SLOW // slow movements
 
-Window *window;
+static Window *window;
 
-Layer *blocks_layer;
-Layer *mario_layer;
-TextLayer *text_hour_layer;
-TextLayer *text_minute_layer;
-Layer *ground_layer;
-TextLayer *date_layer;
-Layer *no_phone_layer;
-Layer *battery_layer;
-Layer *phone_battery_layer;
+static Layer *blocks_layer;
+static Layer *mario_layer;
+static Layer *time_layer;
+static Layer *background_layer;
+static TextLayer *date_layer;
+static Layer *battery_layer;
+static Layer *phone_battery_layer;
 
-static char hour_text[]   = "00";
-static char minute_text[] = "00";
-static char date_text[] = "Wed, Apr 17";
+static char hour_text[3];
+static char minute_text[3];
+static char hour_text_visible[]   = "  ";
+static char minute_text_visible[] = "  ";
+static char date_text[12];
 
-GRect blocks_down_rect;
-GRect blocks_up_rect;
-GRect mario_down_rect;
-GRect mario_up_rect;
-GRect ground_rect;
-GRect no_phone_rect;
-GRect battery_rect;
-GRect phone_battery_rect;
+static GRect blocks_down_rect;
+static GRect blocks_up_rect;
+static GRect mario_down_rect;
+static GRect mario_up_rect;
+static GRect background_rect;
+static GRect battery_rect;
+static GRect phone_battery_rect;
+static GRect time_up_rect;
+static GRect time_normal_rect;
+static GRect time_down_rect;
 
-GRect hour_up_rect;
-GRect hour_normal_rect;
-GRect hour_down_rect;
-GRect minute_up_rect;
-GRect minute_normal_rect;
-GRect minute_down_rect;
+static GFont pixel_font;
+static GFont pixel_font_small;
 
 static int mario_is_down = 1;
+static int need_update_background = 0;
 
 // TODO: I can really make use of BitmapLayer here
-GBitmap *mario_normal_bmp = NULL;
-GBitmap *mario_jump_bmp = NULL;
-GBitmap *ground_bmp = NULL;
-GBitmap *no_phone_bmp = NULL;
-GBitmap *battery_bmp = NULL;
-GBitmap *battery_charging_bmp = NULL;
+static GBitmap *mario_normal_bmp = NULL;
+static GBitmap *mario_jump_bmp = NULL;
+static GBitmap *block_bmp = NULL;
+static GBitmap *no_phone_bmp = NULL;
+static GBitmap *phone_bmp = NULL;
+static GBitmap *watch_bmp = NULL;
+static GBitmap *battery_charging_bmp = NULL;
+static GBitmap *background_day_bmp = NULL;
 
-PropertyAnimation *mario_animation_beg;
-PropertyAnimation *mario_animation_end;
+static PropertyAnimation *mario_animation_beg = NULL;
+static PropertyAnimation *mario_animation_end = NULL;
 
-PropertyAnimation *block_animation_beg;
-PropertyAnimation *block_animation_end;
+static PropertyAnimation *block_animation_beg = NULL;
+static PropertyAnimation *block_animation_end = NULL;
 
-PropertyAnimation *hour_animation_slide_away;
-PropertyAnimation *hour_animation_slide_in;
-PropertyAnimation *minute_animation_slide_away;
-PropertyAnimation *minute_animation_slide_in;
+static PropertyAnimation *hour_animation_slide_away = NULL;
+static PropertyAnimation *hour_animation_slide_in = NULL;
 
-bool config_show_no_phone = true;
-bool config_show_battery = true;
-bool config_vibe = false;
-bool config_inversed = false;
-int phone_battery_level = -1;
+static bool config_show_no_phone = true;
+static bool config_show_battery = true;
+static bool config_show_phone_battery = true;
+static bool config_vibe = false;
+static int config_background = 0;
+static int phone_battery_level = -1;
 
 #define BLOCK_SIZE 50
-#define BLOCK_LAYER_EXTRA 3
-#define BLOCK_SQUEEZE 10
-#define BLOCK_SPACING -1
-#define MARIO_JUMP_DURATION 50
-#define CLOCK_ANIMATION_DURATION 150
+#define BLOCK_SPACING 0
+#ifdef DEMO_SLOW
+#define MARIO_JUMP_DURATION 5000
+#define CLOCK_ANIMATION_DURATION 5000
+#else
+#define MARIO_JUMP_DURATION 100
+#define CLOCK_ANIMATION_DURATION 100
+#endif
 #define GROUND_HEIGHT 26
 
 #define MSG_SHOW_NO_PHONE 0
 #define MSG_SHOW_BATTERY 1
 #define MSG_VIBE 2
-#define MSG_INVERSE 3
 #define MSG_BATTERY_REQUEST 4
 #define MSG_BATTERY_ANSWER 5
-#define SHOW_PHONE_BATTERY
-
-GColor main_color = GColorBlack;
-GColor back_color = GColorWhite;
-
-#if defined(DEMO)
-static int demo_advance_time = 0;
-#endif
+#define MSG_SHOW_PHONE_BATTERY 6
 
 void handle_tick(struct tm *tick_time, TimeUnits units_changed);
 
-static void request_phone_battery()
+static void to_upcase(char* str)
 {
-#ifdef SHOW_PHONE_BATTERY
-	DictionaryIterator *iter;
-	app_message_outbox_begin(&iter);
-	Tuplet tupleRequest = TupletInteger(MSG_BATTERY_REQUEST, 0);
-	dict_write_tuplet(iter, &tupleRequest);
-	app_message_outbox_send();
-#endif
+  while (*str)
+  {
+    if (*str >='a' && *str <= 'z') *str += 'A'-'a';
+    str++;
+  }
 }
 
-void draw_block(GContext *ctx, GRect rect, uint8_t width)
+static void request_phone_battery()
 {
-    static const uint8_t radius = 1;
+  if (config_show_phone_battery)
+  {
+	  DictionaryIterator *iter;
+	  app_message_outbox_begin(&iter);
+	  Tuplet tupleRequest = TupletInteger(MSG_BATTERY_REQUEST, 0);
+	  dict_write_tuplet(iter, &tupleRequest);
+	  app_message_outbox_send();
+  }
+}
 
-    graphics_context_set_fill_color(ctx, main_color);
-    graphics_fill_rect(ctx, rect, radius, GCornersAll);
+void time_update_callback(Layer *layer, GContext *ctx)
+{
+    (void)layer;
+    (void)ctx;
+  
+    GRect layer_bounds = layer_get_bounds(layer);
+    char h1[2];
+    char h2[2];
+    char m1[2];
+    char m2[2];
+    h1[0] = hour_text_visible[0];
+    h2[0] = hour_text_visible[1];
+    m1[0] = minute_text_visible[0];
+    m2[0] = minute_text_visible[1];
+    h1[1] = h2[1] = m1[1] = m2[1] = 0;
+    layer_bounds.origin.y += 1;
+    int one_fix = 2;
+#if PBL_COLOR  
+    GRect origin = layer_bounds;
+    graphics_context_set_text_color(ctx, GColorBlack);
+    layer_bounds.origin.x += 4;
+    layer_bounds.origin.y += 1;
+    if (h1[0] == '1') layer_bounds.origin.x -= one_fix;
+    graphics_draw_text(ctx, h1, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (h1[0] == '1') layer_bounds.origin.x += one_fix;
+    layer_bounds.origin.x += 20;
+    if (h2[0] == '1') layer_bounds.origin.x += one_fix;
+    graphics_draw_text(ctx, h2, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (h2[0] == '1') layer_bounds.origin.x -= one_fix;
+    layer_bounds.origin.x += 30;
+    if (m1[0] == '1') layer_bounds.origin.x -= one_fix;
+    graphics_draw_text(ctx, m1, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (m1[0] == '1') layer_bounds.origin.x += one_fix;
+    layer_bounds.origin.x += 20;
+    if (m2[0] == '1') layer_bounds.origin.x += one_fix;
+    graphics_draw_text(ctx, m2, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 
-    rect.origin.x += width;
-    rect.origin.y += width;
-    rect.size.w -= width*2;
-    rect.size.h -= width*2;
-    graphics_context_set_fill_color(ctx, back_color);
-    graphics_fill_rect(ctx, rect, radius, GCornersAll);
-
-    static const uint8_t dot_offset = 3;
-    static const uint8_t dot_width = 6;
-    static const uint8_t dot_height = 4;
-
-    GRect dot_rect;
-
-    graphics_context_set_fill_color(ctx, main_color);
-
-    // top left dot
-    dot_rect = GRect(rect.origin.x + dot_offset, rect.origin.y + dot_offset,
-                     dot_width, dot_height);
-    graphics_fill_rect(ctx, dot_rect, 1, GCornersAll);
-
-    // top right dot
-    dot_rect = GRect(rect.origin.x + rect.size.w - dot_offset - dot_width, rect.origin.y + dot_offset,
-                     dot_width, dot_height);
-    graphics_fill_rect(ctx, dot_rect, 1, GCornersAll);
-
-    // bottom left dot
-    dot_rect = GRect(rect.origin.x + dot_offset, rect.origin.y + rect.size.h - dot_offset - dot_height,
-                     dot_width, dot_height);
-    graphics_fill_rect(ctx, dot_rect, 1, GCornersAll);
-
-    // bottom right dot
-    dot_rect = GRect(rect.origin.x + rect.size.w - dot_offset - dot_width,
-                     rect.origin.y + rect.size.h - dot_offset - dot_height,
-                     dot_width, dot_height);
-    graphics_fill_rect(ctx, dot_rect, 1, GCornersAll);
+    layer_bounds = origin;
+    graphics_context_set_text_color(ctx, GColorWindsorTan);
+    layer_bounds.origin.x += 3;
+    if (h1[0] == '1') layer_bounds.origin.x -= one_fix;
+    graphics_draw_text(ctx, h1, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (h1[0] == '1') layer_bounds.origin.x += one_fix;
+    layer_bounds.origin.x += 20;
+    if (h2[0] == '1') layer_bounds.origin.x += one_fix;
+    graphics_draw_text(ctx, h2, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (h2[0] == '1') layer_bounds.origin.x -= one_fix;
+    layer_bounds.origin.x += 30;
+    if (m1[0] == '1') layer_bounds.origin.x -= one_fix;
+    graphics_draw_text(ctx, m1, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (m1[0] == '1') layer_bounds.origin.x += one_fix;
+    layer_bounds.origin.x += 20;
+    if (m2[0] == '1') layer_bounds.origin.x += one_fix;
+    graphics_draw_text(ctx, m2, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+#else
+    graphics_context_set_text_color(ctx, GColorBlack);
+    layer_bounds.origin.x += 3;
+    if (h1[0] == '1') layer_bounds.origin.x -= one_fix;
+    graphics_draw_text(ctx, h1, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (h1[0] == '1') layer_bounds.origin.x += one_fix;
+    layer_bounds.origin.x += 20;
+    if (h2[0] == '1') layer_bounds.origin.x += one_fix;
+    graphics_draw_text(ctx, h2, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (h2[0] == '1') layer_bounds.origin.x -= one_fix;
+    layer_bounds.origin.x += 30;
+    if (m1[0] == '1') layer_bounds.origin.x -= one_fix;
+    graphics_draw_text(ctx, m1, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (m1[0] == '1') layer_bounds.origin.x += one_fix;
+    layer_bounds.origin.x += 20;
+    if (m2[0] == '1') layer_bounds.origin.x += 3;
+    graphics_draw_text(ctx, m2, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+#endif
 }
 
 void blocks_update_callback(Layer *layer, GContext *ctx)
 {
-    (void)layer;
-    (void)ctx;
-
     GRect block_rect[2];
 
     GRect layer_bounds = layer_get_bounds(layer);
     GRect layer_frame = layer_get_frame(layer);
 
     block_rect[0] = GRect(layer_bounds.origin.x,
-                          layer_bounds.origin.y + BLOCK_LAYER_EXTRA,
+                          layer_bounds.origin.y + 4,
                           BLOCK_SIZE,
-                          layer_frame.size.h - BLOCK_LAYER_EXTRA);
+                          layer_frame.size.h - 4);
     block_rect[1] = GRect(layer_bounds.origin.x + BLOCK_SIZE + BLOCK_SPACING,
-                          layer_bounds.origin.y + BLOCK_LAYER_EXTRA,
+                          layer_bounds.origin.y + 4,
                           BLOCK_SIZE,
-                          layer_frame.size.h - BLOCK_LAYER_EXTRA);
+                          layer_frame.size.h - 4);
 
+#if PBL_COLOR
+    graphics_context_set_compositing_mode(ctx, GCompOpSet);
+#else
+    graphics_context_set_compositing_mode(ctx, GCompOpAssign);
+#endif
     for (uint8_t i = 0; i < 2; ++i) {
         GRect *rect = block_rect + i;
-
-        draw_block(ctx, *rect, 4);
+        graphics_draw_bitmap_in_rect(ctx, block_bmp, *rect);
     }
 }
 
 void mario_update_callback(Layer *layer, GContext *ctx)
 {
-    (void)layer;
-    (void)ctx;
-
     GRect destination;
     GBitmap *bmp;
 
     bmp = mario_is_down ? mario_normal_bmp : mario_jump_bmp;
-    destination = GRect(0, 0, bmp->bounds.size.w, bmp->bounds.size.h);
+    destination = GRect(0, 0, gbitmap_get_bounds(bmp).size.w, gbitmap_get_bounds(bmp).size.h);
 
+#if PBL_COLOR
+    graphics_context_set_compositing_mode(ctx, GCompOpSet);
+#else
+    graphics_context_set_compositing_mode(ctx, GCompOpAnd);
+#endif
     graphics_draw_bitmap_in_rect(ctx, bmp, destination);
 }
 
@@ -205,33 +246,12 @@ void ground_update_callback(Layer *layer, GContext *ctx)
 {
     (void)layer;
     (void)ctx;
-
-    GRect image_rect = ground_bmp->bounds;
-    GRect rect = layer_get_frame(layer);
-    int16_t image_width = image_rect.size.w;
-
-    image_rect.origin.x = -10;
-    image_rect.origin.y = 0;
-    for (int i = 0; i < rect.size.w / image_rect.size.w + 1; ++i) {
-        graphics_draw_bitmap_in_rect(ctx, ground_bmp, image_rect);
-        image_rect.origin.x +=  image_width;
-    }
-
-    text_layer_set_text(date_layer, date_text);
-}
-
-void no_phone_update_callback(Layer *layer, GContext *ctx)
-{
-		if (config_show_no_phone && !bluetooth_connection_service_peek())
-		{
-				GRect image_rect = no_phone_bmp->bounds;
-				graphics_draw_bitmap_in_rect(ctx, no_phone_bmp, image_rect);
-		}
+    graphics_context_set_compositing_mode(ctx, GCompOpAssign);
+    graphics_draw_bitmap_in_rect(ctx, background_day_bmp, GRect(0,0,144,168));
 }
 
 void bluetooth_connection_callback(bool connected)
 {
-		layer_mark_dirty(no_phone_layer);
 		if (config_vibe && !connected) {		
 				static const uint32_t const segments[] = { 100, 200, 100, 200, 100 };
 				VibePattern pat = {
@@ -249,12 +269,29 @@ void bluetooth_connection_callback(bool connected)
 
 void phone_battery_update_callback(Layer *layer, GContext *ctx)
 {
-		if (phone_battery_level >= 0)
+#ifdef DEMO
+    phone_battery_level = 8;
+#endif
+#if PBL_COLOR
+    graphics_context_set_compositing_mode(ctx, GCompOpSet);
+#else
+    graphics_context_set_compositing_mode(ctx, GCompOpAssign);
+#endif
+		if (config_show_no_phone && !bluetooth_connection_service_peek())
 		{
-				GRect image_rect = battery_bmp->bounds;
-				graphics_draw_bitmap_in_rect(ctx, battery_bmp, image_rect);
-				graphics_context_set_fill_color(ctx, main_color);
-				graphics_fill_rect(ctx, GRect(2, 3, phone_battery_level, 4), 0, GCornerNone);
+				GRect image_rect = gbitmap_get_bounds(no_phone_bmp);
+				graphics_draw_bitmap_in_rect(ctx, no_phone_bmp, image_rect);
+		}  
+		else if (phone_battery_level >= 0 && config_show_phone_battery)
+		{
+				GRect image_rect = gbitmap_get_bounds(phone_bmp);
+        graphics_draw_bitmap_in_rect(ctx, phone_bmp, image_rect);
+#if PBL_COLOR
+        graphics_context_set_fill_color(ctx, GColorWhite);
+#else
+  			graphics_context_set_fill_color(ctx, GColorBlack);
+#endif
+				graphics_fill_rect(ctx, GRect(3, 2, phone_battery_level, 5), 0, GCornerNone);
 		}
 }
 
@@ -262,15 +299,23 @@ void battery_update_callback(Layer *layer, GContext *ctx)
 {
 		if (config_show_battery)
 		{
-				GRect image_rect = battery_bmp->bounds;
+				GRect image_rect = gbitmap_get_bounds(watch_bmp);
 				BatteryChargeState charge_state = battery_state_service_peek();
+#if PBL_COLOR
+        graphics_context_set_compositing_mode(ctx, GCompOpSet);
+#else
+        graphics_context_set_compositing_mode(ctx, GCompOpAssign);
+#endif
 				if (!charge_state.is_charging)
-				{
-						graphics_draw_bitmap_in_rect(ctx, battery_bmp, image_rect);
-						graphics_context_set_fill_color(ctx, main_color);
-						graphics_fill_rect(ctx, GRect(2, 3, charge_state.charge_percent / 10, 4), 0, GCornerNone);
-				} else
+            graphics_draw_bitmap_in_rect(ctx, watch_bmp, image_rect);
+				else
 						graphics_draw_bitmap_in_rect(ctx, battery_charging_bmp, image_rect);
+#if PBL_COLOR
+            graphics_context_set_fill_color(ctx, GColorWhite);
+#else
+						graphics_context_set_fill_color(ctx, GColorBlack);
+#endif
+				graphics_fill_rect(ctx, GRect(7, 2, charge_state.charge_percent / 10, 5), 0, GCornerNone);
 		}
 }
 
@@ -279,78 +324,113 @@ void handle_battery(BatteryChargeState charge_state)
 		layer_mark_dirty(battery_layer);
 }
 
+void update_background()
+{
+  if (background_day_bmp)
+    gbitmap_destroy(background_day_bmp);
+#if PBL_COLOR
+  if (!config_background)
+  {
+    time_t t;
+    time(&t); 
+    struct tm * tick_time = localtime(&t);
+#ifdef DEMO
+    int s = (tick_time->tm_sec + tick_time->tm_min*60) / 15;
+    int hour = ((s % 12) / 2 * 4 + 1);
+#else
+    int hour = tick_time->tm_hour;
+#endif
+    if (hour < 4)
+      background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_UNDERGROUND);
+    else if (hour < 8)
+      background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_CASTLE);
+    else if (hour < 20)
+      background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_DAY);
+    else
+      background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_NIGHT);
+  } else {
+    switch (config_background)
+    {
+      default: 
+        background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_DAY);
+        break;
+      case 2: 
+        background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_NIGHT);
+        break;
+      case 3: 
+        background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_UNDERGROUND);
+        break;
+      case 4: 
+        background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_CASTLE);
+        break;
+    }
+  }
+#else
+  background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_DAY);   
+#endif
+  layer_mark_dirty(background_layer);
+}
+
 void load_bitmaps()
 {
 		if (mario_normal_bmp)
 				gbitmap_destroy(mario_normal_bmp);
 		if (mario_jump_bmp)
 				gbitmap_destroy(mario_jump_bmp);
-    if (ground_bmp)
-				gbitmap_destroy(ground_bmp);
 		if (no_phone_bmp)
 				gbitmap_destroy(no_phone_bmp);
-		if (battery_bmp)
-				gbitmap_destroy(battery_bmp);
+		if (phone_bmp)
+				gbitmap_destroy(phone_bmp);
+		if (watch_bmp)
+				gbitmap_destroy(watch_bmp);
 		if (battery_charging_bmp)
 				gbitmap_destroy(battery_charging_bmp);
+		if (block_bmp)
+				gbitmap_destroy(block_bmp);
 
-		if (!config_inversed)
-		{
-				mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
-				mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
-				ground_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_GROUND);
-				no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE);
-				battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY);
-				battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING);
-		} else {
-				mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL_INVERSED);
-				mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP_INVERSED);
-				ground_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_GROUND_INVERSED);
-				no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE_INVERSED);
-				battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_INVERSED);
-				battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING_INVERSED);
-		}
-}
-
-void update_colors()
-{
-		if (!config_inversed)
-		{
-				main_color = GColorBlack;
-				back_color = GColorWhite;
-		} else {
-				main_color = GColorWhite;
-				back_color = GColorBlack;
-		}
-		
-		window_set_background_color(window, back_color);
-		text_layer_set_text_color(text_hour_layer, main_color);
-		text_layer_set_text_color(text_minute_layer, main_color);
-		text_layer_set_text_color(date_layer, back_color);
-		text_layer_set_background_color(date_layer, main_color);
+		mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
+		mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
+		no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE);
+    phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_PHONE_ICON);
+    watch_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_WATCH_ICON);
+		battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING);
+    block_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BLOCK);
+    update_background();
 }
 
 void in_received_handler(DictionaryIterator *received, void *context) {
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Received config");
 		Tuple *tuple = dict_find(received, MSG_SHOW_NO_PHONE);
 		if (tuple) {
-				config_show_no_phone = (strcmp(tuple->value->cstring, "true") == 0);
-				layer_mark_dirty(no_phone_layer);
+        if (tuple->type == TUPLE_CSTRING)
+				  config_show_no_phone = (strcmp(tuple->value->cstring, "true") == 0);
+        else
+          config_show_no_phone = tuple->value->int8;
+				layer_mark_dirty(phone_battery_layer);
 		}
 		tuple = dict_find(received, MSG_SHOW_BATTERY);
 		if (tuple) {
-				config_show_battery = (strcmp(tuple->value->cstring, "true") == 0);
+        if (tuple->type == TUPLE_CSTRING)
+          config_show_battery = (strcmp(tuple->value->cstring, "true") == 0);
+  			else
+          config_show_battery = tuple->value->int8;
 				layer_mark_dirty(battery_layer);
+		}
+		tuple = dict_find(received, MSG_SHOW_PHONE_BATTERY);
+		if (tuple) {
+        if (tuple->type == TUPLE_CSTRING)
+          config_show_phone_battery = (strcmp(tuple->value->cstring, "true") == 0);
+  			else
+          config_show_phone_battery = tuple->value->int8;
+        if (config_show_phone_battery) request_phone_battery();
+				layer_mark_dirty(phone_battery_layer);
 		}
 		tuple = dict_find(received, MSG_VIBE);
 		if (tuple) {
-				config_vibe = (strcmp(tuple->value->cstring, "true") == 0);
-		}
-		tuple = dict_find(received, MSG_INVERSE);
-		if (tuple) {
-				config_inversed = (strcmp(tuple->value->cstring, "true") == 0);
-				load_bitmaps();
-				update_colors();
+        if (tuple->type == TUPLE_CSTRING)
+          config_vibe = (strcmp(tuple->value->cstring, "true") == 0);
+				else
+          config_vibe = tuple->value->int8;
 		}
 		tuple = dict_find(received, MSG_BATTERY_ANSWER);
 		if (tuple) {
@@ -359,8 +439,8 @@ void in_received_handler(DictionaryIterator *received, void *context) {
 		}
 		persist_write_bool(MSG_SHOW_NO_PHONE, config_show_no_phone);
 		persist_write_bool(MSG_SHOW_BATTERY, config_show_battery);
+    persist_write_bool(MSG_SHOW_PHONE_BATTERY, config_show_phone_battery);
 		persist_write_bool(MSG_VIBE, config_vibe);
-		persist_write_bool(MSG_INVERSE, config_inversed);
 }
 
 void handle_init()
@@ -369,78 +449,82 @@ void handle_init()
 				config_show_no_phone = persist_read_bool(MSG_SHOW_NO_PHONE);
 		if (persist_exists(MSG_SHOW_BATTERY))
 				config_show_battery = persist_read_bool(MSG_SHOW_BATTERY);
+		if (persist_exists(MSG_SHOW_PHONE_BATTERY))
+				config_show_phone_battery = persist_read_bool(MSG_SHOW_PHONE_BATTERY);
 		if (persist_exists(MSG_VIBE))
 				config_vibe = persist_read_bool(MSG_VIBE);
-		if (persist_exists(MSG_INVERSE))
-				config_inversed = persist_read_bool(MSG_INVERSE);
 
 		app_message_register_inbox_received(in_received_handler);
 		app_message_open(64, 64);
 
     window = window_create();
-    window_stack_push(window, true /* Animated */);
 
-    blocks_down_rect = GRect(22, 7, BLOCK_SIZE*2, BLOCK_SIZE + BLOCK_LAYER_EXTRA);
-    blocks_up_rect = GRect(22, 0, BLOCK_SIZE*2, BLOCK_SIZE + BLOCK_LAYER_EXTRA - BLOCK_SQUEEZE);
-    mario_down_rect = GRect(32, 168-GROUND_HEIGHT-80, 80, 80);
-    mario_up_rect = GRect(32, BLOCK_SIZE + BLOCK_LAYER_EXTRA - BLOCK_SQUEEZE, 80, 80);
-    ground_rect = GRect(0, 168-GROUND_HEIGHT, 144, 168);
-		no_phone_rect = GRect(5, 128, 10, 10);
-		battery_rect = GRect(124, 129, 15, 10);
-		phone_battery_rect = GRect(6, 129, 15, 10);
+    blocks_up_rect = GRect(22, -10, BLOCK_SIZE*2, BLOCK_SIZE + 4);
+#if PBL_COLOR
+    mario_down_rect = GRect(32 + 15, 168-GROUND_HEIGHT-76 + 28 + 10, 80, 80);
+    mario_up_rect = GRect(32 + 15, BLOCK_SIZE + 4 + 10, 80, 80);
+    blocks_down_rect = GRect(22, 25, BLOCK_SIZE*2, BLOCK_SIZE + 4);
+#else
+    mario_down_rect = GRect(32, 168-GROUND_HEIGHT-80 + 10, 80, 80);
+    mario_up_rect = GRect(32, BLOCK_SIZE + 4, 80, 80);
+    blocks_down_rect = GRect(22, 16, BLOCK_SIZE*2, BLOCK_SIZE + 4);
+#endif
+    
+    background_rect = GRect(0, 0, 144, 168);
+		battery_rect = GRect(122, 5, 20, 9);
+		phone_battery_rect = GRect(2, 5, 20, 9);
 
-    hour_up_rect = GRect(5, -10, 40, 40);
-    hour_normal_rect = GRect(5, 5 + BLOCK_LAYER_EXTRA, 40, 40);
-    hour_down_rect = GRect(5, BLOCK_SIZE + BLOCK_LAYER_EXTRA, 40, 40);
-    minute_up_rect = GRect(5+BLOCK_SIZE+BLOCK_SPACING, -10, 40, 40);
-    minute_normal_rect = GRect(5+BLOCK_SIZE+BLOCK_SPACING, 5 + BLOCK_LAYER_EXTRA, 40, 40);
-    minute_down_rect = GRect(5+BLOCK_SIZE+BLOCK_SPACING, BLOCK_SIZE + BLOCK_LAYER_EXTRA, 40, 40);
+    pixel_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_GAMEGIRL_24));
+    //pixel_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_EMULOGIC_24));
+    pixel_font_small = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_EMULOGIC_8));
+  
+    time_up_rect = GRect(0, -15, BLOCK_SIZE*2, BLOCK_SIZE);
+    time_normal_rect = GRect(0, 5 + 4 + 5, BLOCK_SIZE*2, BLOCK_SIZE);
+    time_down_rect = GRect(0, BLOCK_SIZE + 4 + 5, BLOCK_SIZE*2, BLOCK_SIZE);
 
     blocks_layer = layer_create(blocks_down_rect);
     mario_layer = layer_create(mario_down_rect);
-    ground_layer = layer_create(ground_rect);
-		no_phone_layer = layer_create(no_phone_rect);
+    background_layer = layer_create(background_rect);
 		battery_layer = layer_create(battery_rect);
 		phone_battery_layer = layer_create(phone_battery_rect);
+    time_layer = layer_create(time_normal_rect);
 
     layer_set_update_proc(blocks_layer, &blocks_update_callback);
     layer_set_update_proc(mario_layer, &mario_update_callback);
-    layer_set_update_proc(ground_layer, &ground_update_callback);
-		layer_set_update_proc(no_phone_layer, &no_phone_update_callback);
+    layer_set_update_proc(background_layer, &ground_update_callback);
 		layer_set_update_proc(battery_layer, &battery_update_callback);
 		layer_set_update_proc(phone_battery_layer, &phone_battery_update_callback);
+    layer_set_update_proc(time_layer, &time_update_callback);
 
     Layer *window_layer = window_get_root_layer(window);
 
-    layer_add_child(window_layer, blocks_layer);
-    layer_add_child(window_layer, mario_layer);
-    layer_add_child(window_layer, ground_layer);
-		layer_add_child(window_layer, no_phone_layer);
-		layer_add_child(window_layer, battery_layer);
-		layer_add_child(window_layer, phone_battery_layer);
-
-    text_hour_layer = text_layer_create(hour_normal_rect);
-    text_layer_set_background_color(text_hour_layer, GColorClear);
-    text_layer_set_text_alignment(text_hour_layer, GTextAlignmentCenter);
-    text_layer_set_font(text_hour_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
-    layer_add_child(blocks_layer, (Layer *)text_hour_layer);
-
-    text_minute_layer = text_layer_create(GRect(55, 5, 40, 40));
-    text_layer_set_background_color(text_minute_layer, GColorClear);
-    text_layer_set_text_alignment(text_minute_layer, GTextAlignmentCenter);
-    text_layer_set_font(text_minute_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
-    layer_add_child(blocks_layer, (Layer *)text_minute_layer);
-
-    GRect date_rect = GRect(30, 6, 144-30*2, ground_rect.size.h-6*2);
+    GRect date_rect = GRect(0, 5, 142, 20);
     date_layer = text_layer_create(date_rect);
     text_layer_set_text_alignment(date_layer, GTextAlignmentCenter);
-    text_layer_set_font(date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-    layer_add_child(ground_layer, (Layer *)date_layer);
+    text_layer_set_font(date_layer, pixel_font_small);
+#if PBL_COLOR
+    text_layer_set_text_color(date_layer, GColorWhite);
+#else
+    text_layer_set_text_color(date_layer, GColorBlack);
+#endif
+		text_layer_set_background_color(date_layer, GColorClear);
+    time_t t;
+    time(&t);  
+    strftime(date_text, sizeof(date_text), "%a, %b %d", localtime(&t));
+    to_upcase(date_text);
+    text_layer_set_text(date_layer, date_text);
 
-		update_colors();
-		load_bitmaps();
+    layer_add_child(window_layer, background_layer);
+    layer_add_child(background_layer, (Layer *)date_layer);
+		layer_add_child(background_layer, battery_layer);
+		layer_add_child(background_layer, phone_battery_layer);
+    layer_add_child(blocks_layer, time_layer);
+    layer_add_child(background_layer, blocks_layer);
+    layer_add_child(background_layer, mario_layer);
+  
+    window_stack_push(window, false);
 
-#if defined(DEMO)
+#ifdef DEMO
     #define MARIO_TIME_UNIT SECOND_UNIT
 #else
     #define MARIO_TIME_UNIT MINUTE_UNIT
@@ -453,6 +537,11 @@ void handle_init()
 		battery_state_service_subscribe(handle_battery);
 		
 		request_phone_battery();
+
+ 		load_bitmaps(); 
+#ifdef DEMO
+    light_enable(true);
+#endif
 }
 
 void handle_deinit()
@@ -461,32 +550,39 @@ void handle_deinit()
 
     animation_unschedule_all();
 
-    property_animation_destroy(mario_animation_beg);
-    property_animation_destroy(mario_animation_end);
-    property_animation_destroy(block_animation_beg);
-    property_animation_destroy(block_animation_end);
-    property_animation_destroy(hour_animation_slide_in);
-    property_animation_destroy(hour_animation_slide_away);
-    property_animation_destroy(minute_animation_slide_in);
-    property_animation_destroy(minute_animation_slide_away);
+    if (mario_animation_beg)
+        property_animation_destroy(mario_animation_beg);
+    if (mario_animation_end)
+      property_animation_destroy(mario_animation_end);  
+    if (block_animation_beg)
+        property_animation_destroy(block_animation_beg);
+    if (block_animation_end)
+      property_animation_destroy(block_animation_end);
+    if (hour_animation_slide_in)
+      property_animation_destroy(hour_animation_slide_in);
+    if (hour_animation_slide_away)
+      property_animation_destroy(hour_animation_slide_away);
 
     gbitmap_destroy(mario_normal_bmp);
     gbitmap_destroy(mario_jump_bmp);
-    gbitmap_destroy(ground_bmp);
 		gbitmap_destroy(no_phone_bmp);
-		gbitmap_destroy(battery_bmp);
-		gbitmap_destroy(battery_charging_bmp);		
+    gbitmap_destroy(phone_bmp);
+    gbitmap_destroy(watch_bmp);
+		gbitmap_destroy(battery_charging_bmp);  
+    gbitmap_destroy(block_bmp);
+    gbitmap_destroy(background_day_bmp);
 
-    text_layer_destroy(date_layer);
-    text_layer_destroy(text_minute_layer);
-    text_layer_destroy(text_hour_layer);
-
-    layer_destroy(ground_layer);
+    text_layer_destroy(date_layer);    
+    layer_destroy(time_layer);
+    layer_destroy(background_layer);
     layer_destroy(mario_layer);
     layer_destroy(blocks_layer);
-		layer_destroy(no_phone_layer);
 		layer_destroy(battery_layer);
+    layer_destroy(phone_battery_layer);
 
+    fonts_unload_custom_font(pixel_font);
+    fonts_unload_custom_font(pixel_font_small);
+  
     window_destroy(window);
 		
 		bluetooth_connection_service_unsubscribe();
@@ -496,163 +592,143 @@ void handle_deinit()
 
 void mario_down_animation_started(Animation *animation, void *data)
 {
-    (void)animation;
-    (void)data;
 }
 
 void mario_down_animation_stopped(Animation *animation, void *data)
 {
-    (void)animation;
-    (void)data;
     mario_is_down = 1;
     layer_mark_dirty(mario_layer);
 }
 
 void mario_jump_animation_started(Animation *animation, void *data)
 {
-    (void)animation;
-    (void)data;
     mario_is_down = 0;
     layer_mark_dirty(mario_layer);
 }
 
 void mario_jump_animation_stopped(Animation *animation, void *data)
 {
-    (void)animation;
-    (void)data;
+    if (mario_animation_end)
+        property_animation_destroy(mario_animation_end);
 
-    text_layer_set_text(text_hour_layer, hour_text);
-    text_layer_set_text(text_minute_layer, minute_text);
-
-    if (!mario_animation_end) {
-        mario_animation_end = property_animation_create_layer_frame(mario_layer,
+    mario_animation_end = property_animation_create_layer_frame(mario_layer,
                                                                     &mario_up_rect,
                                                                     &mario_down_rect);
-        animation_set_duration((Animation *)mario_animation_end, MARIO_JUMP_DURATION);
-        animation_set_curve((Animation *)mario_animation_end, AnimationCurveEaseIn);
-        animation_set_handlers((Animation *)mario_animation_end, (AnimationHandlers){
-            .started = (AnimationStartedHandler)mario_down_animation_started,
-            .stopped = (AnimationStoppedHandler)mario_down_animation_stopped
-        }, 0);
-    }
+    animation_set_duration((Animation *)mario_animation_end, MARIO_JUMP_DURATION);
+    animation_set_curve((Animation *)mario_animation_end, AnimationCurveEaseIn);
+    animation_set_handlers((Animation *)mario_animation_end, (AnimationHandlers){
+        .started = (AnimationStartedHandler)mario_down_animation_started,
+        .stopped = (AnimationStoppedHandler)mario_down_animation_stopped
+    }, 0);
 
     animation_schedule((Animation *)mario_animation_end);
 }
 
-void block_up_animation_started(Animation *animation, void *data)
-{
-    (void)animation;
-    (void)data;
-}
-
-void block_up_animation_stopped(Animation *animation, void *data)
-{
-    (void)animation;
-    (void)data;
-
-    if (!block_animation_end) {
-        block_animation_end = property_animation_create_layer_frame(blocks_layer,
-                                                                    &blocks_up_rect,
-                                                                    &blocks_down_rect);
-        animation_set_duration((Animation *)block_animation_end, MARIO_JUMP_DURATION);
-        animation_set_curve((Animation *)block_animation_end, AnimationCurveEaseIn);
-    }
-    animation_schedule((Animation *)block_animation_end);
-}
 
 void clock_animation_slide_away_started(Animation *animation, void *data)
 {
-    (void)animation;
-    (void)data;
 }
 
 void clock_animation_slide_away_stopped(Animation *animation, void *data)
 {
-    (void)animation;
-    (void)data;
+    layer_set_frame((Layer *)time_layer, time_down_rect);
+    strcpy(hour_text_visible, hour_text);
+    strcpy(minute_text_visible, minute_text);
+    layer_mark_dirty(time_layer);
 
-    layer_set_frame((Layer *)text_hour_layer, hour_down_rect);
-    layer_set_frame((Layer *)text_minute_layer, minute_down_rect);
+    if (hour_animation_slide_in)
+        property_animation_destroy(hour_animation_slide_in);
 
-    if (!hour_animation_slide_in) {
-        hour_animation_slide_in = property_animation_create_layer_frame((Layer *)text_hour_layer,
-                                                                        &hour_down_rect,
-                                                                        &hour_normal_rect);
-        animation_set_duration((Animation *)hour_animation_slide_in, CLOCK_ANIMATION_DURATION);
-        animation_set_curve((Animation *)hour_animation_slide_in, AnimationCurveLinear);
-    }
-
-    if (!minute_animation_slide_in) {
-        minute_animation_slide_in = property_animation_create_layer_frame((Layer *)text_minute_layer,
-                                                                          &minute_down_rect,
-                                                                          &minute_normal_rect);
-        animation_set_duration((Animation *)minute_animation_slide_in, CLOCK_ANIMATION_DURATION);
-        animation_set_curve((Animation *)minute_animation_slide_in, AnimationCurveLinear);
-    }
-
+    hour_animation_slide_in = property_animation_create_layer_frame((Layer *)time_layer,
+                                                                        &time_down_rect,
+                                                                        &time_normal_rect);
+    animation_set_duration((Animation *)hour_animation_slide_in, CLOCK_ANIMATION_DURATION);
+    animation_set_curve((Animation *)hour_animation_slide_in, AnimationCurveLinear);
     animation_schedule((Animation *)hour_animation_slide_in);
-    animation_schedule((Animation *)minute_animation_slide_in);
+}
+
+void block_up_animation_started(Animation *animation, void *data)
+{
+    if (hour_animation_slide_away)
+        property_animation_destroy(hour_animation_slide_away);
+    hour_animation_slide_away = property_animation_create_layer_frame((Layer *)time_layer,
+                                                                          &time_normal_rect,
+                                                                          &time_up_rect);
+    animation_set_duration((Animation *)hour_animation_slide_away, CLOCK_ANIMATION_DURATION);
+    animation_set_curve((Animation *)hour_animation_slide_away, AnimationCurveLinear);
+    animation_set_handlers((Animation *)hour_animation_slide_away, (AnimationHandlers){
+        .started = (AnimationStartedHandler)clock_animation_slide_away_started,
+        .stopped = (AnimationStoppedHandler)clock_animation_slide_away_stopped
+    }, 0);
+    animation_schedule((Animation *)hour_animation_slide_away);
+}
+
+void block_up_animation_stopped(Animation *animation, void *data)
+{
+    if (block_animation_end)
+        property_animation_destroy(block_animation_end);
+    block_animation_end = property_animation_create_layer_frame(blocks_layer,
+                                                                    &blocks_up_rect,
+                                                                    &blocks_down_rect);
+    animation_set_duration((Animation *)block_animation_end, MARIO_JUMP_DURATION);
+    animation_set_curve((Animation *)block_animation_end, AnimationCurveEaseIn);
+    animation_schedule((Animation *)block_animation_end);
+
+    // Update background if need      
+    if (need_update_background)
+    {
+      need_update_background = 0;
+      update_background();
+    }  
+
+    // Update date
+    time_t t;
+    time(&t); 
+    struct tm * tick_time = localtime(&t);
+    strftime(date_text, sizeof(date_text), "%a, %b %d", tick_time);
+    to_upcase(date_text);
+    text_layer_set_text(date_layer, date_text);
 }
 
 void handle_tick(struct tm *tick_time, TimeUnits units_changed)
 {
-    if (!mario_animation_beg) {
-        mario_animation_beg = property_animation_create_layer_frame(mario_layer,
+#ifdef DEMO
+    if (tick_time->tm_sec % 15 != 0) return;
+#endif
+    if (mario_animation_beg)
+        property_animation_destroy(mario_animation_beg);
+    mario_animation_beg = property_animation_create_layer_frame(mario_layer,
                                                                     &mario_down_rect,
                                                                     &mario_up_rect);
-        animation_set_duration((Animation *)mario_animation_beg, MARIO_JUMP_DURATION);
-        animation_set_curve((Animation *)mario_animation_beg, AnimationCurveEaseOut);
-        animation_set_handlers((Animation *)mario_animation_beg, (AnimationHandlers){
-            .started = (AnimationStartedHandler)mario_jump_animation_started,
-            .stopped = (AnimationStoppedHandler)mario_jump_animation_stopped
-        }, 0);
-    }
+    animation_set_duration((Animation *)mario_animation_beg, MARIO_JUMP_DURATION);
+    animation_set_curve((Animation *)mario_animation_beg, AnimationCurveEaseOut);
+    animation_set_handlers((Animation *)mario_animation_beg, (AnimationHandlers){
+        .started = (AnimationStartedHandler)mario_jump_animation_started,
+        .stopped = (AnimationStoppedHandler)mario_jump_animation_stopped
+    }, 0);
 
-    if (!block_animation_beg) {
-        block_animation_beg = property_animation_create_layer_frame(blocks_layer,
+    if (block_animation_beg)
+        property_animation_destroy(block_animation_beg);
+
+    block_animation_beg = property_animation_create_layer_frame(blocks_layer,
                                                                     &blocks_down_rect,
                                                                     &blocks_up_rect);
-        animation_set_duration((Animation *)block_animation_beg, MARIO_JUMP_DURATION);
-        animation_set_curve((Animation *)block_animation_beg, AnimationCurveEaseOut);
-        animation_set_handlers((Animation *)block_animation_beg, (AnimationHandlers){
-            .started = (AnimationStartedHandler)block_up_animation_started,
-            .stopped = (AnimationStoppedHandler)block_up_animation_stopped
-        }, 0);
-    }
-
-    if (!hour_animation_slide_away) {
-        hour_animation_slide_away = property_animation_create_layer_frame((Layer *)text_hour_layer,
-                                                                          &hour_normal_rect,
-                                                                          &hour_up_rect);
-        animation_set_duration((Animation *)hour_animation_slide_away, CLOCK_ANIMATION_DURATION);
-        animation_set_curve((Animation *)hour_animation_slide_away, AnimationCurveLinear);
-        animation_set_handlers((Animation *)hour_animation_slide_away, (AnimationHandlers){
-            .started = (AnimationStartedHandler)clock_animation_slide_away_started,
-            .stopped = (AnimationStoppedHandler)clock_animation_slide_away_stopped
-        }, 0);
-    }
-
-    if (!minute_animation_slide_away) {
-        minute_animation_slide_away = property_animation_create_layer_frame((Layer *)text_minute_layer,
-                                                                            &minute_normal_rect,
-                                                                            &minute_up_rect);
-        animation_set_duration((Animation *)minute_animation_slide_away, CLOCK_ANIMATION_DURATION);
-        animation_set_curve((Animation *)minute_animation_slide_away, AnimationCurveLinear);
-    }
-
-#if defined(DEMO)
-    strncpy(date_text, "Sat, May 19", sizeof(date_text)-1);
-    date_text[sizeof(date_text)-1] = '\0';
-
-    hour_text[0] = '9';
-    hour_text[1] = '\0';
-    minute_text[0] = '4';
-    minute_text[1] = '1';
-    minute_text[2] = '\0';
-    if (demo_advance_time) {
-        minute_text[1] = '2';
-    }
-    demo_advance_time ^= 1;
+    animation_set_duration((Animation *)block_animation_beg, MARIO_JUMP_DURATION);
+#if PBL_COLOR
+    animation_set_delay((Animation *)block_animation_beg, MARIO_JUMP_DURATION*4/9);
+#else
+    animation_set_delay((Animation *)block_animation_beg, MARIO_JUMP_DURATION/10);
+#endif
+    animation_set_curve((Animation *)block_animation_beg, AnimationCurveEaseOut);
+    animation_set_handlers((Animation *)block_animation_beg, (AnimationHandlers){
+        .started = (AnimationStartedHandler)block_up_animation_started,
+        .stopped = (AnimationStoppedHandler)block_up_animation_stopped
+    }, 0);
+    
+#ifdef DEMO
+    int s = (tick_time->tm_sec + tick_time->tm_min*60) / 15;
+    snprintf(hour_text, sizeof(hour_text), "%02d", ((s % 12) / 2 * 4 + 1));
+    snprintf(minute_text, sizeof(minute_text), "%02d", s % 60);
 #else
     char *hour_format;
     if (clock_is_24h_style()) {
@@ -660,30 +736,33 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed)
     } else {
         hour_format = "%I";
     }
-
     strftime(hour_text, sizeof(hour_text), hour_format, tick_time);
-    if (!clock_is_24h_style() && (hour_text[0] == '0')) {
-        memmove(hour_text, &hour_text[1], sizeof(hour_text) - 1);
-    }
-
     char *minute_format = "%M";
     strftime(minute_text, sizeof(minute_text), minute_format, tick_time);
-
-    strftime(date_text, sizeof(date_text), "%a, %b %d", tick_time);
 #endif
 
     animation_schedule((Animation *)mario_animation_beg);
     animation_schedule((Animation *)block_animation_beg);
-    animation_schedule((Animation *)hour_animation_slide_away);
-    animation_schedule((Animation *)minute_animation_slide_away);
-		
-		if ((tick_time->tm_min % 30 == 0) /*|| (phone_battery_level < 0)*/)
+  
+		if ((units_changed | MINUTE_UNIT) && (tick_time->tm_min % 30 == 0))
 			request_phone_battery();
+  
+    if (units_changed | HOUR_UNIT)
+      need_update_background = 1;
+
+/*
+    if (units_changed | DAY_UNIT)
+    {
+      strftime(date_text, sizeof(date_text), "%a, %b %d", tick_time);
+      to_upcase(date_text);
+      text_layer_set_text(date_layer, date_text);
+    }
+*/
 }
 
 int main(void)
 {
-    handle_init();
-    app_event_loop();
-    handle_deinit();
+  handle_init();
+  app_event_loop();
+  handle_deinit();
 }

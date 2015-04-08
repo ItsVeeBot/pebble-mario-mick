@@ -1,88 +1,109 @@
 {
-  "uuid": "b6a0ab5f-92b7-4c2b-bc0f-346b99ae30a0",
-  "shortName": "Mario",
-  "longName": "Mario",
-  "companyName": "Denis Dzyubenko",
-  "versionCode": 3,
-  "versionLabel": "2.1",
-  "watchapp": {
-    "watchface": true
-  },
-	"capabilities": [ "configurable" ],
-	"appKeys": {
-			"config_show_no_phone": 0,
-			"config_show_battery": 1,
-			"config_vibe": 2,
-			"config_inverse": 3
-		},
-  "resources": {
-    "media": [
-      {
-        "type": "png",
-        "name": "IMAGE_MENU_ICON",
-        "file": "images/menuicon.png",
-        "menuIcon": true
-      },
-       {
-        "type": "png",
-        "name": "IMAGE_MARIO_NORMAL",
-        "file": "images/mario-normal.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_MARIO_NORMAL_INVERSED",
-        "file": "images/mario-normal-inversed.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_MARIO_JUMP",
-        "file": "images/mario-jump.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_MARIO_JUMP_INVERSED",
-        "file": "images/mario-jump-inversed.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_GROUND",
-        "file": "images/ground.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_GROUND_INVERSED",
-        "file": "images/ground-inversed.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_NO_PHONE",
-        "file": "images/no-phone.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_NO_PHONE_INVERSED",
-        "file": "images/no-phone-inversed.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_BATTERY",
-        "file": "images/battery.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_BATTERY_INVERSED",
-        "file": "images/battery-inversed.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_BATTERY_CHARGING",
-        "file": "images/battery-charging.png"
-      },
-      {
-        "type": "png",
-        "name": "IMAGE_BATTERY_CHARGING_INVERSED",
-        "file": "images/battery-charging-inversed.png"
-      }
-    ]
-  }
+    "appKeys": {
+        "config_show_battery": 1,
+        "config_show_no_phone": 0,
+        "config_show_phone_battery": 6,
+        "config_vibe": 2
+    },
+    "capabilities": [
+        "configurable"
+    ],
+    "companyName": "Denis Dzyubenko",
+    "longName": "Mario",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/mario_bg_night_color.png",
+                "name": "IMAGE_BACKGROUND_NIGHT",
+                "type": "png"
+            },
+            {
+                "file": "images/battery-charging.png",
+                "name": "IMAGE_BATTERY_CHARGING",
+                "type": "png"
+            },
+            {
+                "file": "images/watch_icon.png",
+                "name": "IMAGE_WATCH_ICON",
+                "type": "png"
+            },
+            {
+                "file": "images/phone_icon.png",
+                "name": "IMAGE_PHONE_ICON",
+                "type": "png"
+            },
+            {
+                "file": "images/no-phone.png",
+                "name": "IMAGE_NO_PHONE",
+                "type": "png"
+            },
+            {
+                "file": "images/mario_bg_underground_color.png",
+                "name": "IMAGE_BACKGROUND_UNDERGROUND",
+                "type": "png"
+            },
+            {
+                "file": "images/mario_bg_castle_color.png",
+                "name": "IMAGE_BACKGROUND_CASTLE",
+                "type": "png"
+            },
+            {
+                "file": "images/mario_bg_day_bw.png",
+                "name": "IMAGE_BACKGROUND_DAY",
+                "type": "png"
+            },
+            {
+                "characterRegex": "[,0-9A-Z]",
+                "file": "fonts/emulogic.ttf",
+                "name": "FONT_EMULOGIC_8",
+                "type": "font"
+            },
+            {
+                "file": "images/mario_block_48_bw.png",
+                "name": "IMAGE_BLOCK",
+                "type": "png"
+            },
+            {
+                "characterRegex": "[,0-9A-Z]",
+                "file": "fonts/Gamegirl.ttf",
+                "name": "FONT_GAMEGIRL_8",
+                "type": "font"
+            },
+            {
+                "characterRegex": "[0-9]",
+                "file": "fonts/Gamegirl.ttf",
+                "name": "FONT_GAMEGIRL_24",
+                "type": "font"
+            },
+            {
+                "file": "images/mario-jump.png",
+                "name": "IMAGE_MARIO_JUMP",
+                "type": "png"
+            },
+            {
+                "file": "images/mario-normal.png",
+                "name": "IMAGE_MARIO_NORMAL",
+                "type": "png"
+            },
+            {
+                "file": "images/menuicon.png",
+                "menuIcon": true,
+                "name": "IMAGE_MENU_ICON",
+                "type": "png"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "Mario",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "43caa750-2896-4f46-94dc-1adbd4bc1ff3",
+    "versionCode": 3,
+    "versionLabel": "2.1",
+    "watchapp": {
+        "watchface": true
+    }
 }
