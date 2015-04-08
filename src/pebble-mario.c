@@ -22,7 +22,7 @@
 #include <pebble.h>
 #include <time.h>
 
-//#define DEMO // display fake time. Good for taking screenshots of the watchface.
+#define DEMO // display fake time. Good for taking screenshots of the watchface.
 //#define DEMO_SLOW // slow movements
 
 static Window *window;
@@ -31,7 +31,6 @@ static Layer *blocks_layer;
 static Layer *mario_layer;
 static Layer *time_layer;
 static Layer *background_layer;
-static TextLayer *date_layer;
 static Layer *battery_layer;
 static Layer *phone_battery_layer;
 
@@ -127,9 +126,6 @@ static void request_phone_battery()
 
 void time_update_callback(Layer *layer, GContext *ctx)
 {
-    (void)layer;
-    (void)ctx;
-  
     GRect layer_bounds = layer_get_bounds(layer);
     char h1[2];
     char h2[2];
@@ -242,12 +238,40 @@ void mario_update_callback(Layer *layer, GContext *ctx)
     graphics_draw_bitmap_in_rect(ctx, bmp, destination);
 }
 
+// Draw background and date
 void ground_update_callback(Layer *layer, GContext *ctx)
 {
-    (void)layer;
-    (void)ctx;
+    GRect layer_bounds = layer_get_bounds(layer);
+
     graphics_context_set_compositing_mode(ctx, GCompOpAssign);
-    graphics_draw_bitmap_in_rect(ctx, background_day_bmp, GRect(0,0,144,168));
+    graphics_draw_bitmap_in_rect(ctx, background_day_bmp, layer_bounds);
+
+    layer_bounds.origin.y = 5;
+    layer_bounds.origin.x = 30;
+#if PBL_COLOR  
+    graphics_context_set_text_color(ctx, GColorWhite);
+#else
+    graphics_context_set_text_color(ctx, GColorBlack);
+#endif
+
+    time_t t;
+    time(&t); 
+    struct tm * tick_time = localtime(&t);
+    
+    // Compress spaces
+    strftime(date_text, sizeof(date_text), "%a,", tick_time);
+    to_upcase(date_text);
+    graphics_draw_text(ctx, date_text, pixel_font_small, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+
+    layer_bounds.origin.x += 37;
+    strftime(date_text, sizeof(date_text), "%b", tick_time);
+    to_upcase(date_text);
+    graphics_draw_text(ctx, date_text, pixel_font_small, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+
+    layer_bounds.origin.x += 31;
+    strftime(date_text, sizeof(date_text), "%d", tick_time);
+    to_upcase(date_text);
+    graphics_draw_text(ctx, date_text, pixel_font_small, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
 void bluetooth_connection_callback(bool connected)
@@ -368,7 +392,6 @@ void update_background()
 #else
   background_day_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND_DAY);   
 #endif
-  layer_mark_dirty(background_layer);
 }
 
 void load_bitmaps()
@@ -498,24 +521,7 @@ void handle_init()
 
     Layer *window_layer = window_get_root_layer(window);
 
-    GRect date_rect = GRect(0, 5, 142, 20);
-    date_layer = text_layer_create(date_rect);
-    text_layer_set_text_alignment(date_layer, GTextAlignmentCenter);
-    text_layer_set_font(date_layer, pixel_font_small);
-#if PBL_COLOR
-    text_layer_set_text_color(date_layer, GColorWhite);
-#else
-    text_layer_set_text_color(date_layer, GColorBlack);
-#endif
-		text_layer_set_background_color(date_layer, GColorClear);
-    time_t t;
-    time(&t);  
-    strftime(date_text, sizeof(date_text), "%a, %b %d", localtime(&t));
-    to_upcase(date_text);
-    text_layer_set_text(date_layer, date_text);
-
     layer_add_child(window_layer, background_layer);
-    layer_add_child(background_layer, (Layer *)date_layer);
 		layer_add_child(background_layer, battery_layer);
 		layer_add_child(background_layer, phone_battery_layer);
     layer_add_child(blocks_layer, time_layer);
@@ -572,7 +578,6 @@ void handle_deinit()
     gbitmap_destroy(block_bmp);
     gbitmap_destroy(background_day_bmp);
 
-    text_layer_destroy(date_layer);    
     layer_destroy(time_layer);
     layer_destroy(background_layer);
     layer_destroy(mario_layer);
@@ -679,15 +684,8 @@ void block_up_animation_stopped(Animation *animation, void *data)
     {
       need_update_background = 0;
       update_background();
-    }  
-
-    // Update date
-    time_t t;
-    time(&t); 
-    struct tm * tick_time = localtime(&t);
-    strftime(date_text, sizeof(date_text), "%a, %b %d", tick_time);
-    to_upcase(date_text);
-    text_layer_set_text(date_layer, date_text);
+    }
+    layer_mark_dirty(background_layer);
 }
 
 void handle_tick(struct tm *tick_time, TimeUnits units_changed)
@@ -749,15 +747,6 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed)
   
     if (units_changed | HOUR_UNIT)
       need_update_background = 1;
-
-/*
-    if (units_changed | DAY_UNIT)
-    {
-      strftime(date_text, sizeof(date_text), "%a, %b %d", tick_time);
-      to_upcase(date_text);
-      text_layer_set_text(date_layer, date_text);
-    }
-*/
 }
 
 int main(void)
