@@ -4,6 +4,7 @@ var options = {
   "config_show_battery": true,
   "config_show_phone_battery": true,
   "config_vibe": false,
+  "config_background": 0,
 };
 
 Pebble.addEventListener("ready", function() {

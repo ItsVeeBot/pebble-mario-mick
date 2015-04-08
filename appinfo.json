@@ -1,5 +1,6 @@
 {
     "appKeys": {
+        "config_background": 7,
         "config_show_battery": 1,
         "config_show_no_phone": 0,
         "config_show_phone_battery": 6,

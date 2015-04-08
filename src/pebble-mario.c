@@ -22,7 +22,7 @@
 #include <pebble.h>
 #include <time.h>
 
-#define DEMO // display fake time. Good for taking screenshots of the watchface.
+//#define DEMO // display fake time. Good for taking screenshots of the watchface.
 //#define DEMO_SLOW // slow movements
 
 static Window *window;
@@ -100,6 +100,7 @@ static int phone_battery_level = -1;
 #define MSG_BATTERY_REQUEST 4
 #define MSG_BATTERY_ANSWER 5
 #define MSG_SHOW_PHONE_BATTERY 6
+#define MSG_BACKGROUND 7
 
 void handle_tick(struct tm *tick_time, TimeUnits units_changed);
 
@@ -430,6 +431,7 @@ void in_received_handler(DictionaryIterator *received, void *context) {
         else
           config_show_no_phone = tuple->value->int8;
 				layer_mark_dirty(phone_battery_layer);
+    		persist_write_bool(MSG_SHOW_NO_PHONE, config_show_no_phone);
 		}
 		tuple = dict_find(received, MSG_SHOW_BATTERY);
 		if (tuple) {
@@ -438,6 +440,7 @@ void in_received_handler(DictionaryIterator *received, void *context) {
   			else
           config_show_battery = tuple->value->int8;
 				layer_mark_dirty(battery_layer);
+    		persist_write_bool(MSG_SHOW_BATTERY, config_show_battery);
 		}
 		tuple = dict_find(received, MSG_SHOW_PHONE_BATTERY);
 		if (tuple) {
@@ -447,6 +450,7 @@ void in_received_handler(DictionaryIterator *received, void *context) {
           config_show_phone_battery = tuple->value->int8;
         if (config_show_phone_battery) request_phone_battery();
 				layer_mark_dirty(phone_battery_layer);
+        persist_write_bool(MSG_SHOW_PHONE_BATTERY, config_show_phone_battery);
 		}
 		tuple = dict_find(received, MSG_VIBE);
 		if (tuple) {
@@ -454,16 +458,20 @@ void in_received_handler(DictionaryIterator *received, void *context) {
           config_vibe = (strcmp(tuple->value->cstring, "true") == 0);
 				else
           config_vibe = tuple->value->int8;
+    		persist_write_bool(MSG_VIBE, config_vibe);
+		}
+		tuple = dict_find(received, MSG_BACKGROUND);
+		if (tuple) {
+				config_background = tuple->value->int8;
+        update_background();
+				layer_mark_dirty(background_layer);
+        persist_write_bool(MSG_BACKGROUND, config_background);
 		}
 		tuple = dict_find(received, MSG_BATTERY_ANSWER);
 		if (tuple) {
 				phone_battery_level = tuple->value->int8;
 				layer_mark_dirty(phone_battery_layer);
 		}
-		persist_write_bool(MSG_SHOW_NO_PHONE, config_show_no_phone);
-		persist_write_bool(MSG_SHOW_BATTERY, config_show_battery);
-    persist_write_bool(MSG_SHOW_PHONE_BATTERY, config_show_phone_battery);
-		persist_write_bool(MSG_VIBE, config_vibe);
 }
 
 void handle_init()
@@ -476,6 +484,8 @@ void handle_init()
 				config_show_phone_battery = persist_read_bool(MSG_SHOW_PHONE_BATTERY);
 		if (persist_exists(MSG_VIBE))
 				config_vibe = persist_read_bool(MSG_VIBE);
+  	if (persist_exists(MSG_BACKGROUND))
+				config_background = persist_read_bool(MSG_BACKGROUND);  
 
 		app_message_register_inbox_received(in_received_handler);
 		app_message_open(64, 64);
