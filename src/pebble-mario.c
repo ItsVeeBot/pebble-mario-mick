@@ -291,7 +291,7 @@ void phone_battery_update_callback(Layer *layer, GContext *ctx)
 #else
   			graphics_context_set_fill_color(ctx, GColorBlack);
 #endif
-				graphics_fill_rect(ctx, GRect(3, 2, phone_battery_level, 5), 0, GCornerNone);
+				graphics_fill_rect(ctx, GRect(7, 2, phone_battery_level, 5), 0, GCornerNone);
 		}
 }
 

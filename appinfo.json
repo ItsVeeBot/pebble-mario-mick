@@ -8,11 +8,21 @@
     "capabilities": [
         "configurable"
     ],
-    "companyName": "Denis Dzyubenko",
-    "longName": "Mario",
+    "companyName": "Cluster",
+    "longName": "Mario Time",
     "projectType": "native",
     "resources": {
         "media": [
+            {
+                "file": "images/no-phone.png",
+                "name": "IMAGE_NO_PHONE",
+                "type": "png"
+            },
+            {
+                "file": "images/phone_icon.png",
+                "name": "IMAGE_PHONE_ICON",
+                "type": "png"
+            },
             {
                 "file": "images/mario_bg_night_color.png",
                 "name": "IMAGE_BACKGROUND_NIGHT",
@@ -26,16 +36,6 @@
             {
                 "file": "images/watch_icon.png",
                 "name": "IMAGE_WATCH_ICON",
-                "type": "png"
-            },
-            {
-                "file": "images/phone_icon.png",
-                "name": "IMAGE_PHONE_ICON",
-                "type": "png"
-            },
-            {
-                "file": "images/no-phone.png",
-                "name": "IMAGE_NO_PHONE",
                 "type": "png"
             },
             {
@@ -65,12 +65,6 @@
                 "type": "png"
             },
             {
-                "characterRegex": "[,0-9A-Z]",
-                "file": "fonts/Gamegirl.ttf",
-                "name": "FONT_GAMEGIRL_8",
-                "type": "font"
-            },
-            {
                 "characterRegex": "[0-9]",
                 "file": "fonts/Gamegirl.ttf",
                 "name": "FONT_GAMEGIRL_24",
@@ -95,14 +89,14 @@
         ]
     },
     "sdkVersion": "3",
-    "shortName": "Mario",
+    "shortName": "Mario Time",
     "targetPlatforms": [
         "aplite",
         "basalt"
     ],
     "uuid": "43caa750-2896-4f46-94dc-1adbd4bc1ff3",
     "versionCode": 3,
-    "versionLabel": "2.1",
+    "versionLabel": "3.0",
     "watchapp": {
         "watchface": true
     }
