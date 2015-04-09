@@ -15,8 +15,8 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
-// You may contact the author of original watchface at denis@ddenis.info
-// Author of color mod for Pebble Time: clusterrr@clusterrr.com
+// You may contact the author of the original watchface at denis@ddenis.info
+// Author of the color mod for Pebble Time: clusterrr@clusterrr.com
 //
 
 #include <pebble.h>
@@ -316,7 +316,7 @@ void phone_battery_update_callback(Layer *layer, GContext *ctx)
 #else
     graphics_context_set_fill_color(ctx, GColorBlack);
 #endif
-    graphics_fill_rect(ctx, GRect(8, 2, phone_battery_level, 5), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(9, 2, phone_battery_level, 5), 0, GCornerNone);
   }
 }
 
@@ -340,7 +340,7 @@ void battery_update_callback(Layer *layer, GContext *ctx)
 #else
       graphics_context_set_fill_color(ctx, GColorBlack);
 #endif
-    graphics_fill_rect(ctx, GRect(8, 2, charge_state.charge_percent / 10, 5), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(9, 2, charge_state.charge_percent / 10, 5), 0, GCornerNone);
   }
 }
 
@@ -504,8 +504,8 @@ void handle_init()
 #endif
   
   background_rect = GRect(0, 0, 144, 168);
-  battery_rect = GRect(120, 5, 21, 9);
-  phone_battery_rect = GRect(3, 5, 21, 9);
+  battery_rect = GRect(119, 5, 22, 9);
+  phone_battery_rect = GRect(3, 5, 22, 9);
 
   pixel_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_GAMEGIRL_24));
   //pixel_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_EMULOGIC_24));
