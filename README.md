@@ -13,14 +13,13 @@ http://www.mypebblefaces.com/view?fID=290&aName=Habib&pageTitle=MarioTime&auID=2
 
 Download: [mario.pbw](mario.pbw?raw=true)
 
-Animation:
-
-![animation](https://github.com/shadone/pebble-mario/raw/master/screencast.gif)
-
+You can download Android companion app to show phone battery level:
+http://clusterrr.com/soft/PebbleMarioAndroid.apk
 
 ## Licence
 
 Copyright (C) 2013 Denis Dzyubenko
+Copyright (C) 2015 Alexey Avdyukhin
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -36,4 +35,5 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-You may contact the author at denis@ddenis.info
+You may contact the author of the original watchface at denis@ddenis.info
+Author of the color mod for Pebble Time: clusterrr@clusterrr.com
