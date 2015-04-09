@@ -248,7 +248,7 @@ void ground_update_callback(Layer *layer, GContext *ctx)
   graphics_draw_bitmap_in_rect(ctx, background_day_bmp, layer_bounds);
 
   layer_bounds.origin.y = 5;
-  layer_bounds.origin.x = 30;
+  layer_bounds.origin.x = 31;
 #if PBL_COLOR  
   graphics_context_set_text_color(ctx, GColorWhite);
 #else
@@ -264,12 +264,12 @@ void ground_update_callback(Layer *layer, GContext *ctx)
   to_upcase(date_text);
   graphics_draw_text(ctx, date_text, pixel_font_small, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 
-  layer_bounds.origin.x += 37;
+  layer_bounds.origin.x += 34;
   strftime(date_text, sizeof(date_text), "%b", tick_time);
   to_upcase(date_text);
   graphics_draw_text(ctx, date_text, pixel_font_small, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 
-  layer_bounds.origin.x += 31;
+  layer_bounds.origin.x += 30;
   strftime(date_text, sizeof(date_text), "%d", tick_time);
   to_upcase(date_text);
   graphics_draw_text(ctx, date_text, pixel_font_small, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
@@ -316,7 +316,7 @@ void phone_battery_update_callback(Layer *layer, GContext *ctx)
 #else
     graphics_context_set_fill_color(ctx, GColorBlack);
 #endif
-    graphics_fill_rect(ctx, GRect(7, 2, phone_battery_level, 5), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(8, 2, phone_battery_level, 5), 0, GCornerNone);
   }
 }
 
@@ -340,7 +340,7 @@ void battery_update_callback(Layer *layer, GContext *ctx)
 #else
       graphics_context_set_fill_color(ctx, GColorBlack);
 #endif
-    graphics_fill_rect(ctx, GRect(7, 2, charge_state.charge_percent / 10, 5), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(8, 2, charge_state.charge_percent / 10, 5), 0, GCornerNone);
   }
 }
 
@@ -504,8 +504,8 @@ void handle_init()
 #endif
   
   background_rect = GRect(0, 0, 144, 168);
-  battery_rect = GRect(122, 5, 20, 9);
-  phone_battery_rect = GRect(2, 5, 20, 9);
+  battery_rect = GRect(120, 5, 21, 9);
+  phone_battery_rect = GRect(3, 5, 21, 9);
 
   pixel_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_GAMEGIRL_24));
   //pixel_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_EMULOGIC_24));

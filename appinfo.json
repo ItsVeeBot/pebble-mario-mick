@@ -15,8 +15,8 @@
     "resources": {
         "media": [
             {
-                "file": "images/no-phone.png",
-                "name": "IMAGE_NO_PHONE",
+                "file": "images/battery-charging.png",
+                "name": "IMAGE_BATTERY_CHARGING",
                 "type": "png"
             },
             {
@@ -25,18 +25,18 @@
                 "type": "png"
             },
             {
-                "file": "images/mario_bg_night_color.png",
-                "name": "IMAGE_BACKGROUND_NIGHT",
-                "type": "png"
-            },
-            {
-                "file": "images/battery-charging.png",
-                "name": "IMAGE_BATTERY_CHARGING",
-                "type": "png"
-            },
-            {
                 "file": "images/watch_icon.png",
                 "name": "IMAGE_WATCH_ICON",
+                "type": "png"
+            },
+            {
+                "file": "images/no-phone.png",
+                "name": "IMAGE_NO_PHONE",
+                "type": "png"
+            },
+            {
+                "file": "images/mario_bg_night_color.png",
+                "name": "IMAGE_BACKGROUND_NIGHT",
                 "type": "png"
             },
             {
