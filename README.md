@@ -1,15 +1,17 @@
-# Mario Pebble Watch Face
-_by Denis Dzyubenko, mod by Alexey Avdyukhin_
+# Mario Watchface for Pebble Classic and Pebble Time
+_by Denis Dzyubenko and Alexey Avdyukhin_
 
 Mario jumps every minute.
 
-[![Preview](https://github.com/shadone/pebble-mario/raw/master/preview.png)](https://github.com/shadone/pebble-mario/raw/master/preview.png)
+[![Preview](mario_color.gif)](mario_color.gif) [![Preview](mario_bw.gif)](mario_bw.gif)
 
-Based on a concept by Habib:
+Based on a concept by Denis Dzyubenko:
+https://github.com/shadone/pebble-mario
+
+Which based on a concept by Habib:
 http://www.mypebblefaces.com/view?fID=290&aName=Habib&pageTitle=MarioTime&auID=265
 
 Download: [mario.pbw](mario.pbw?raw=true)
-
 
 Animation:
 
