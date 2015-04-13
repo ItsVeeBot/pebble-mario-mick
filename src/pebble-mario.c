@@ -108,8 +108,8 @@ static void to_upcase(char* str)
 {
   while (*str)
   {
-  if (*str >='a' && *str <= 'z') *str += 'A'-'a';
-  str++;
+    if (*str >='a' && *str <= 'z') *str += 'A'-'a';
+    str++;
   }
 }
 
