@@ -24,7 +24,9 @@ Pebble.addEventListener("ready", function() {
 Pebble.addEventListener("showConfiguration", function() {
   console.log("showing configuration");
 	var cfg = '?config=' + encodeURI(JSON.stringify(options));
-  Pebble.openURL("http://clusterrr.com/pebble_configs/mario.php" + cfg);
+  var watch = Pebble.getActiveWatchInfo();
+  var platform = "&platform=" + ((watch != null) ? watch.platform : "unknown");
+  Pebble.openURL("http://clusterrr.com/pebble_configs/mario.php" + cfg + platform);
 });
 
 Pebble.addEventListener("webviewclosed", function(e) {
