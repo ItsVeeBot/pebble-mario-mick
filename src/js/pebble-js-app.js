@@ -21,12 +21,18 @@ Pebble.addEventListener("ready", function() {
   }
 });
 
-Pebble.addEventListener("showConfiguration", function() {
-  console.log("showing configuration");
-	var cfg = '?config=' + encodeURI(JSON.stringify(options));
-  var watch = Pebble.getActiveWatchInfo();
+Pebble.addEventListener("showConfiguration", function() {  
+  var cfg = '?config=' + encodeURI(JSON.stringify(options));
+  try
+  {
+    var watch = Pebble.getActiveWatchInfo();
+  } catch(e) {
+    console.log("getActiveWatchInfo error: " + e);
+    var watch = null;
+  }
   var platform = "&platform=" + ((watch != null) ? watch.platform : "unknown");
-  Pebble.openURL("http://clusterrr.com/pebble_configs/mario.php" + cfg + platform);
+  console.log("showing configuration");
+	Pebble.openURL("http://clusterrr.com/pebble_configs/mario.php" + cfg + platform);
 });
 
 Pebble.addEventListener("webviewclosed", function(e) {
