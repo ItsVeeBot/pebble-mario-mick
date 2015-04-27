@@ -1,5 +1,7 @@
 # Mario Watchface for Pebble Classic and Pebble Time
-_by Denis Dzyubenko and Alexey Avdyukhin_
+_by Alexey Avdyukhin_
+
+_original version by Denis Dzyubenko_
 
 Mario jumps every minute.
 
