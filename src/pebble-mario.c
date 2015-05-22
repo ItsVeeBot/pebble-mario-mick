@@ -62,7 +62,8 @@ static GBitmap *mario_normal_bmp = NULL;
 static GBitmap *mario_jump_bmp = NULL;
 static GBitmap *block_bmp = NULL;
 static GBitmap *no_phone_bmp = NULL;
-static GBitmap *phone_bmp = NULL;
+static GBitmap *phone_battery_bmp = NULL;
+static GBitmap *phone_battery_unknown_bmp = NULL;
 static GBitmap *watch_bmp = NULL;
 static GBitmap *battery_charging_bmp = NULL;
 static GBitmap *background_day_bmp = NULL;
@@ -300,23 +301,29 @@ void phone_battery_update_callback(Layer *layer, GContext *ctx)
 #if PBL_COLOR
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
 #else
-  graphics_context_set_compositing_mode(ctx, GCompOpAssign);
+  graphics_context_set_compositing_mode(ctx, GCompOpAssignInverted);
 #endif
   if (config_show_no_phone && !bluetooth_connection_service_peek())
   {
     GRect image_rect = gbitmap_get_bounds(no_phone_bmp);
     graphics_draw_bitmap_in_rect(ctx, no_phone_bmp, image_rect);
   }  
-  else if (phone_battery_level >= 0 && config_show_phone_battery)
+  else if (/*phone_battery_level >= 0 &&*/ config_show_phone_battery)
   {
-    GRect image_rect = gbitmap_get_bounds(phone_bmp);
-    graphics_draw_bitmap_in_rect(ctx, phone_bmp, image_rect);
+    if (phone_battery_level >= 0)
+    {
+      GRect image_rect = gbitmap_get_bounds(phone_battery_bmp);
+      graphics_draw_bitmap_in_rect(ctx, phone_battery_bmp, image_rect);
 #if PBL_COLOR
-    graphics_context_set_fill_color(ctx, GColorWhite);
+      graphics_context_set_fill_color(ctx, GColorWhite);
 #else
-    graphics_context_set_fill_color(ctx, GColorBlack);
+      graphics_context_set_fill_color(ctx, GColorBlack);
 #endif
-    graphics_fill_rect(ctx, GRect(9, 2, phone_battery_level, 5), 0, GCornerNone);
+      graphics_fill_rect(ctx, GRect(9, 2, phone_battery_level, 5), 0, GCornerNone);
+    } else {
+      GRect image_rect = gbitmap_get_bounds(phone_battery_unknown_bmp);
+      graphics_draw_bitmap_in_rect(ctx, phone_battery_unknown_bmp, image_rect);
+    }
   }
 }
 
@@ -329,7 +336,7 @@ void battery_update_callback(Layer *layer, GContext *ctx)
 #if PBL_COLOR
     graphics_context_set_compositing_mode(ctx, GCompOpSet);
 #else
-    graphics_context_set_compositing_mode(ctx, GCompOpAssign);
+    graphics_context_set_compositing_mode(ctx, GCompOpAssignInverted);
 #endif
     if (!charge_state.is_charging)
       graphics_draw_bitmap_in_rect(ctx, watch_bmp, image_rect);
@@ -403,8 +410,8 @@ void load_bitmaps()
     gbitmap_destroy(mario_jump_bmp);
   if (no_phone_bmp)
     gbitmap_destroy(no_phone_bmp);
-  if (phone_bmp)
-    gbitmap_destroy(phone_bmp);
+  if (phone_battery_bmp)
+    gbitmap_destroy(phone_battery_bmp);
   if (watch_bmp)
     gbitmap_destroy(watch_bmp);
   if (battery_charging_bmp)
@@ -415,8 +422,9 @@ void load_bitmaps()
   mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
   mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
   no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE);
-  phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_PHONE_ICON);
-  watch_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_WATCH_ICON);
+  phone_battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_PHONE_BATTERY);
+  phone_battery_unknown_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_PHONE_BATTERY_UNKNOWN);
+  watch_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_WATCH_BATTERY);
   battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING);
   block_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BLOCK);
   update_background();
@@ -582,7 +590,8 @@ void handle_deinit()
   gbitmap_destroy(mario_normal_bmp);
   gbitmap_destroy(mario_jump_bmp);
   gbitmap_destroy(no_phone_bmp);
-  gbitmap_destroy(phone_bmp);
+  gbitmap_destroy(phone_battery_bmp);
+  gbitmap_destroy(phone_battery_unknown_bmp);
   gbitmap_destroy(watch_bmp);
   gbitmap_destroy(battery_charging_bmp);  
   gbitmap_destroy(block_bmp);
