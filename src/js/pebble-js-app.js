@@ -1,11 +1,61 @@
 var initialized = false;
 var options = {
   "config_show_no_phone": true,
+  "config_show_weather": true,
+  "config_temperature_units": 0,
   "config_show_battery": true,
-  "config_show_phone_battery": true,
+  "config_show_phone_battery": false,
   "config_vibe": false,
   "config_background": 0,
 };
+
+var locationOptions = { "timeout": 60000, "maximumAge": 60000 * 30 }; 
+
+function locationSuccess(pos) {
+  coordinates = pos.coords;
+  console.log("Location: lat = "+coordinates.latitude+", lon = "+coordinates.longitude);
+  console.log("Requesting weather...");
+  var req = new XMLHttpRequest();
+  req.open('GET', "http://api.openweathermap.org/data/2.5/weather?lat="+coordinates.latitude+"&lon="+coordinates.longitude, true);
+  req.onreadystatechange = function() {
+    if (req.readyState == 4) {
+      if(req.status == 200) {
+        //console.log("Response: "+req.responseText);
+        var response = JSON.parse(req.responseText);				
+        if (response.weather.length > 0)
+        {
+          var weather = response.weather[0];
+          var temp = response.main.temp;
+          //console.log("Icon: "+weather.icon);
+          //console.log("Temperature: "+temp);
+          var iconId = parseInt(weather.icon.substring(0,2));
+          if (weather.icon.charAt(2) == "n") iconId += 100;
+          var tempConverted = temp - 273.15;
+          if (options.config_temperature_units == 0)
+            tempConverted = Math.round(tempConverted*1.8 + 32);
+          else
+            tempConverted = Math.round(tempConverted);
+          console.log("Icon id: "+iconId);
+          console.log("Temperature: "+tempConverted);
+          Pebble.sendAppMessage({"weather_icon_id":iconId, "weather_temperature": tempConverted});
+        }
+      } else {
+        console.warn("HTTP error: "+req.status);
+      }
+    }
+  }
+  req.send(null);
+}
+
+function locationError() {
+  console.warn("Can't detect location"); 
+}
+
+function weatherUpdate()
+{
+  console.log("Requesting location...");
+  window.navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
+}
 
 Pebble.addEventListener("ready", function() {
   initialized = true;
@@ -19,6 +69,7 @@ Pebble.addEventListener("ready", function() {
       console.log("stored config json parse error: " + json + ' - ' + e);
     }
   }
+  //weatherUpdate();
 });
 
 Pebble.addEventListener("showConfiguration", function() {  
@@ -32,7 +83,7 @@ Pebble.addEventListener("showConfiguration", function() {
   }
   var platform = "&platform=" + ((watch != null) ? watch.platform : "unknown");
   console.log("showing configuration");
-	Pebble.openURL("http://clusterrr.com/pebble_configs/mario.php" + cfg + platform);
+	Pebble.openURL("http://clusterrr.com/pebble_configs/mario_w.php" + cfg + platform);
 });
 
 Pebble.addEventListener("webviewclosed", function(e) {
@@ -42,9 +93,21 @@ Pebble.addEventListener("webviewclosed", function(e) {
 		try {
 			options = JSON.parse(response);
 			Pebble.sendAppMessage(options);
+      if (options.config_show_weather)
+        setTimeout(weatherUpdate, 5000);
     } catch(e) {
 			console.log("Response config json parse error: " + response + ' - ' + e);
 		}
     console.log("Options = " + response);
   }
 });
+
+Pebble.addEventListener("appmessage",
+  function(e) {
+    console.log("Appmessage: "+JSON.stringify(e.payload));
+		if ("weather_request" in e.payload)
+		{
+      setTimeout(weatherUpdate, 5000);
+		}
+  }
+);
