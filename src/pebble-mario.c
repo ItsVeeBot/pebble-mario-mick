@@ -349,6 +349,7 @@ void phone_battery_update_callback(Layer *layer, GContext *ctx)
   if (config_show_weather && (!config_show_phone_battery || left_info_mode == 0))
   {
     GRect image_rect = gbitmap_get_bounds(weather_icon_bmp);
+    image_rect.origin.y += (13-image_rect.size.h)/2;
     graphics_draw_bitmap_in_rect(ctx, weather_icon_bmp, image_rect);
     
     if (weather_temperature > -100)
@@ -510,7 +511,7 @@ void load_bitmaps()
 void load_weather_icon()
 {
 #ifdef DEMO
-  weather_icon_id = 10;
+  weather_icon_id = 1;
   weather_temperature = 52;
 #endif
   if (weather_icon_bmp)
