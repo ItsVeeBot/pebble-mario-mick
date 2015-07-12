@@ -91,9 +91,11 @@ static int weather_temperature = -100;
 
 static int left_info_mode = 0;
 
-static char digits[10][15] = {{1,1,1,1,0,1,1,0,1,1,0,1,1,1,1},{0,0,1,0,0,1,0,0,1,0,0,1,0,0,1},{1,1,1,0,0,1,1,1,1,1,0,0,1,1,1},{1,1,1,0,0,1,1,1,1,0,0,1,1,1,1},
-                            {1,0,1,1,0,1,1,1,1,0,0,1,0,0,1},{1,1,1,1,0,0,1,1,1,0,0,1,1,1,1},{1,1,1,1,0,0,1,1,1,1,0,1,1,1,1},{1,1,1,0,0,1,0,0,1,0,0,1,0,0,1},
-                             {1,1,1,1,0,1,1,1,1,1,0,1,1,1,1},{1,1,1,1,0,1,1,1,1,0,0,1,1,1,1}};
+static char digits[10][15] = {{1,1,1,1,0,1,1,0,1,1,0,1,1,1,1},{0,0,1,0,0,1,0,0,1,0,0,1,0,0,1},
+                            {1,1,1,0,0,1,1,1,1,1,0,0,1,1,1},{1,1,1,0,0,1,1,1,1,0,0,1,1,1,1},
+                            {1,0,1,1,0,1,1,1,1,0,0,1,0,0,1},{1,1,1,1,0,0,1,1,1,0,0,1,1,1,1},
+                            {1,1,1,1,0,0,1,1,1,1,0,1,1,1,1},{1,1,1,0,0,1,0,0,1,0,0,1,0,0,1},
+                            {1,1,1,1,0,1,1,1,1,1,0,1,1,1,1},{1,1,1,1,0,1,1,1,1,0,0,1,1,1,1}};
 
 #define BLOCK_SIZE 50
 #define BLOCK_SPACING 0
@@ -138,7 +140,7 @@ static void request_all()
 {
   int weather_age = time(NULL)-weather_last_update;
 
-  if (config_show_phone_battery || (config_show_weather && (weather_age > WEATHER_UPDATE_INTERVAL)))
+  if (config_show_phone_battery || (config_show_weather && ((weather_age > WEATHER_UPDATE_INTERVAL))))
   {
     DictionaryIterator *iter;
     app_message_outbox_begin(&iter);
@@ -191,7 +193,7 @@ void time_update_callback(Layer *layer, GContext *ctx)
   graphics_draw_text(ctx, m2, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 
   layer_bounds = origin;
-  graphics_context_set_text_color(ctx, GColorWindsorTan);
+  graphics_context_set_text_color(ctx, GColorBulgarianRose);
   layer_bounds.origin.x += 3;
   if (h1[0] == '1') layer_bounds.origin.x -= one_fix;
   graphics_draw_text(ctx, h1, pixel_font, layer_bounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
@@ -354,7 +356,8 @@ void phone_battery_update_callback(Layer *layer, GContext *ctx)
     
     if (weather_temperature > -100)
     {
-      int temp_x = 13;
+      int temp_x = image_rect.size.w + 4; //13;
+      if (temp_x > 13) temp_x = 13;
       int temp_y = 4;
     
       int digit1 = (weather_temperature / 10) % 10;
@@ -511,8 +514,8 @@ void load_bitmaps()
 void load_weather_icon()
 {
 #ifdef DEMO
-  weather_icon_id = 1;
-  weather_temperature = 52;
+  weather_icon_id = 9;
+  weather_temperature = -23;
 #endif
   if (weather_icon_bmp)
     gbitmap_destroy(weather_icon_bmp);
@@ -575,7 +578,7 @@ void in_received_handler(DictionaryIterator *received, void *context) {
     else
       config_show_no_phone = tuple->value->int8;
     layer_mark_dirty(phone_battery_layer);
-    persist_write_bool(MSG_SHOW_NO_PHONE, config_show_no_phone);
+    persist_write_int(MSG_SHOW_NO_PHONE, config_show_no_phone);
   }
   tuple = dict_find(received, MSG_SHOW_BATTERY);
   if (tuple) {
@@ -618,7 +621,7 @@ void in_received_handler(DictionaryIterator *received, void *context) {
     config_background = tuple->value->int8;
     update_background();
     layer_mark_dirty(background_layer);
-    persist_write_bool(MSG_BACKGROUND, config_background);
+    persist_write_int(MSG_BACKGROUND, config_background);
   }
   tuple = dict_find(received, MSG_BATTERY_ANSWER);
   if (tuple) {
@@ -637,6 +640,10 @@ void in_received_handler(DictionaryIterator *received, void *context) {
     persist_write_int(MSG_WEATHER_ICON_ID, weather_icon_id);
     persist_write_int(MSG_WEATHER_TEMPERATURE, weather_temperature);
   }
+  if (config_show_weather && config_show_phone_battery)
+    accel_tap_service_subscribe(accel_tap_handler);
+  else
+    accel_tap_service_unsubscribe();
 }
 
 void handle_init()
@@ -652,7 +659,7 @@ void handle_init()
   if (persist_exists(MSG_VIBE))
     config_vibe = persist_read_bool(MSG_VIBE);
   if (persist_exists(MSG_BACKGROUND))
-    config_background = persist_read_bool(MSG_BACKGROUND);  
+    config_background = persist_read_int(MSG_BACKGROUND);  
   if (persist_exists(ID_WEATHER_LAST_UPDATE))
     weather_last_update = persist_read_int(ID_WEATHER_LAST_UPDATE);
   if (persist_exists(MSG_WEATHER_ICON_ID))
@@ -724,7 +731,8 @@ void handle_init()
   tick_timer_service_subscribe(MARIO_TIME_UNIT, handle_tick);  
   bluetooth_connection_service_subscribe(bluetooth_connection_callback);
   battery_state_service_subscribe(handle_battery);
-  accel_tap_service_subscribe(accel_tap_handler);
+  if (config_show_weather && config_show_phone_battery)
+    accel_tap_service_subscribe(accel_tap_handler);
   
   request_all();
 

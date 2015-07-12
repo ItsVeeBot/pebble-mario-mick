@@ -22,6 +22,21 @@
     "resources": {
         "media": [
             {
+                "file": "images/mario-jump-bw.png",
+                "name": "IMAGE_MARIO_JUMP",
+                "type": "png"
+            },
+            {
+                "file": "images/mario-normal-bw.png",
+                "name": "IMAGE_MARIO_NORMAL",
+                "type": "png"
+            },
+            {
+                "file": "images/mario_bg_day_bw (2).png",
+                "name": "IMAGE_BACKGROUND_DAY",
+                "type": "png"
+            },
+            {
                 "file": "images/weather_few_clouds_night.png",
                 "name": "IMAGE_WEATHER_FEW_CLOUDS_NIGHT",
                 "type": "png"
@@ -127,11 +142,6 @@
                 "type": "png"
             },
             {
-                "file": "images/mario_bg_day_bw.png",
-                "name": "IMAGE_BACKGROUND_DAY",
-                "type": "png"
-            },
-            {
                 "characterRegex": "[,0-9A-Z]",
                 "file": "fonts/emulogic.ttf",
                 "name": "FONT_EMULOGIC_8",
@@ -149,16 +159,6 @@
                 "type": "font"
             },
             {
-                "file": "images/mario-jump.png",
-                "name": "IMAGE_MARIO_JUMP",
-                "type": "png"
-            },
-            {
-                "file": "images/mario-normal.png",
-                "name": "IMAGE_MARIO_NORMAL",
-                "type": "png"
-            },
-            {
                 "file": "images/menuicon.png",
                 "menuIcon": true,
                 "name": "IMAGE_MENU_ICON",
@@ -173,7 +173,7 @@
         "basalt"
     ],
     "uuid": "43caa750-2896-4f46-94dc-1adbd4bc1ff3",
-    "versionLabel": "3.13",
+    "versionLabel": "3.20",
     "watchapp": {
         "watchface": true
     }
