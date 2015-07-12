@@ -578,7 +578,7 @@ void in_received_handler(DictionaryIterator *received, void *context) {
     else
       config_show_no_phone = tuple->value->int8;
     layer_mark_dirty(phone_battery_layer);
-    persist_write_int(MSG_SHOW_NO_PHONE, config_show_no_phone);
+    persist_write_bool(MSG_SHOW_NO_PHONE, config_show_no_phone);
   }
   tuple = dict_find(received, MSG_SHOW_BATTERY);
   if (tuple) {
