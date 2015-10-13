@@ -8,6 +8,7 @@
         "config_show_weather": 8,
         "config_temperature_units": 999,
         "config_vibe": 2,
+        "config_vibe_hour": 14,
         "weather_icon_id": 10,
         "weather_request": 12,
         "weather_temperature": 11
@@ -22,6 +23,11 @@
     "resources": {
         "media": [
             {
+                "file": "images/mario_bg_day.png",
+                "name": "IMAGE_BACKGROUND_DAY",
+                "type": "png"
+            },
+            {
                 "file": "images/mario-jump-bw.png",
                 "name": "IMAGE_MARIO_JUMP",
                 "type": "png"
@@ -29,11 +35,6 @@
             {
                 "file": "images/mario-normal-bw.png",
                 "name": "IMAGE_MARIO_NORMAL",
-                "type": "png"
-            },
-            {
-                "file": "images/mario_bg_day_bw (2).png",
-                "name": "IMAGE_BACKGROUND_DAY",
                 "type": "png"
             },
             {
@@ -173,7 +174,7 @@
         "basalt"
     ],
     "uuid": "43caa750-2896-4f46-94dc-1adbd4bc1ff3",
-    "versionLabel": "3.20",
+    "versionLabel": "3.22",
     "watchapp": {
         "watchface": true
     }

@@ -6,6 +6,7 @@ var options = {
   "config_show_battery": true,
   "config_show_phone_battery": false,
   "config_vibe": false,
+  "config_vibe_hour": false,
   "config_background": 0,
 };
 
@@ -82,8 +83,9 @@ Pebble.addEventListener("showConfiguration", function() {
     var watch = null;
   }
   var platform = "&platform=" + ((watch != null) ? watch.platform : "unknown");
-  console.log("showing configuration");
-	Pebble.openURL("http://clusterrr.com/pebble_configs/mario_w.php" + cfg + platform);
+  var config_version = "&v=2";
+  console.log("Showing configuration");
+	Pebble.openURL("http://clusterrr.com/pebble_configs/mario_w.php" + cfg + platform + config_version);
 });
 
 Pebble.addEventListener("webviewclosed", function(e) {

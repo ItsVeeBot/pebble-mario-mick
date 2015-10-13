@@ -84,6 +84,7 @@ static bool config_show_weather = true;
 static bool config_vibe = false;
 static int config_background = 0;
 static int phone_battery_level = -1;
+static bool config_vibe_hour = false;
 
 static time_t weather_last_update = 0;
 static int weather_icon_id = -1;
@@ -124,6 +125,7 @@ static char digits[10][15] = {{1,1,1,1,0,1,1,0,1,1,0,1,1,1,1},{0,0,1,0,0,1,0,0,1
 #define MSG_WEATHER_TEMPERATURE 11
 #define MSG_WEATHER_REQUEST 12
 #define ID_LEFT_INFO_MODE 13
+#define MSG_VIBE_HOUR 14
 
 void handle_tick(struct tm *tick_time, TimeUnits units_changed);
 
@@ -616,6 +618,14 @@ void in_received_handler(DictionaryIterator *received, void *context) {
       config_vibe = tuple->value->int8;
     persist_write_bool(MSG_VIBE, config_vibe);
   }
+  tuple = dict_find(received, MSG_VIBE_HOUR);
+  if (tuple) {
+    if (tuple->type == TUPLE_CSTRING)
+      config_vibe_hour = (strcmp(tuple->value->cstring, "true") == 0);
+    else
+      config_vibe_hour = tuple->value->int8;
+    persist_write_bool(MSG_VIBE_HOUR, config_vibe_hour);
+  }
   tuple = dict_find(received, MSG_BACKGROUND);
   if (tuple) {
     config_background = tuple->value->int8;
@@ -658,6 +668,8 @@ void handle_init()
     config_show_weather = persist_read_bool(MSG_SHOW_WEATHER);
   if (persist_exists(MSG_VIBE))
     config_vibe = persist_read_bool(MSG_VIBE);
+  if (persist_exists(MSG_VIBE_HOUR))
+    config_vibe_hour = persist_read_bool(MSG_VIBE_HOUR);
   if (persist_exists(MSG_BACKGROUND))
     config_background = persist_read_int(MSG_BACKGROUND);  
   if (persist_exists(ID_WEATHER_LAST_UPDATE))
@@ -928,7 +940,7 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed)
   animation_schedule((Animation *)block_animation_beg);
   
   int weather_age = time(NULL)-weather_last_update;
-  if (units_changed | MINUTE_UNIT)
+  if (units_changed & MINUTE_UNIT)
   {
     if ((tick_time->tm_min % 30 == 0) || ((tick_time->tm_min % 5 == 0) && (weather_age > WEATHER_UPDATE_INTERVAL)))
         request_all();
@@ -942,8 +954,19 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed)
       layer_mark_dirty(phone_battery_layer);
   }
   
-  if (units_changed | HOUR_UNIT)
+  if (units_changed & HOUR_UNIT)
+  {
     need_update_background = 1;
+    if (config_vibe_hour)
+    {
+      static const uint32_t const segments[] = { 50, 100, 50, 100, 50, 100, 50, 100, 50 };
+      VibePattern pat = {
+        .durations = segments,
+        .num_segments = ARRAY_LENGTH(segments),
+      };    
+      vibes_enqueue_custom_pattern(pat);
+    }
+  }
 }
 
 int main(void)
