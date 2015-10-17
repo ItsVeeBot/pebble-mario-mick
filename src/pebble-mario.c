@@ -160,6 +160,11 @@ static void request_all()
   }
 }
 
+static void request_all_on_start(void* data)
+{
+  request_all();
+}
+
 void time_update_callback(Layer *layer, GContext *ctx)
 {
   GRect layer_bounds = layer_get_bounds(layer);
@@ -282,9 +287,15 @@ void ground_update_callback(Layer *layer, GContext *ctx)
   graphics_context_set_compositing_mode(ctx, GCompOpAssign);
   graphics_draw_bitmap_in_rect(ctx, background_day_bmp, layer_bounds);
 
+#if !PBL_PLATFORM_CHALK
   layer_bounds.origin.y = 5;
   layer_bounds.origin.x = 31;
-#if PBL_COLOR  
+#else
+  layer_bounds.origin.y = 13;
+  layer_bounds.origin.x = 31+18;  
+#endif
+
+  #if PBL_COLOR  
   graphics_context_set_text_color(ctx, GColorWhite);
 #else
   graphics_context_set_text_color(ctx, GColorBlack);
@@ -683,24 +694,39 @@ void handle_init()
 
   app_message_register_inbox_received(in_received_handler);
   app_message_open(128, 64);
-
   window = window_create();
 
-  blocks_up_rect = GRect(22, -10, BLOCK_SIZE*2, BLOCK_SIZE + 4);
+#if !PBL_PLATFORM_CHALK
+  int offset_x = 0;
+  int offset_y = 0;
+  int screen_size_x = 144;
+  int screen_size_y = 168;
+#else
+  int offset_x = 18;
+  int offset_y = 6;
+  int screen_size_x = 180;
+  int screen_size_y = 180;
+#endif
+
+  blocks_up_rect = GRect(22+offset_x, -10, BLOCK_SIZE*2, BLOCK_SIZE + 4);
 #if PBL_COLOR
-  mario_down_rect = GRect(32 + 15, 168-GROUND_HEIGHT-76 + 28 + 10, 80, 80);
-  mario_up_rect = GRect(32 + 15, BLOCK_SIZE + 4 + 10, 80, 80);
-  blocks_down_rect = GRect(22, 25, BLOCK_SIZE*2, BLOCK_SIZE + 4);
+  mario_down_rect = GRect(32 + 15 + offset_x, 168-GROUND_HEIGHT-76 + 28 + 10 + offset_y, 80, 80);
+  mario_up_rect = GRect(32 + 15 + offset_x, BLOCK_SIZE + 4 + 10 + offset_y, 80, 80);
+  blocks_down_rect = GRect(22 + offset_x, 25 + offset_y, BLOCK_SIZE*2, BLOCK_SIZE + 4);
 #else
   mario_down_rect = GRect(32, 168-GROUND_HEIGHT-80 + 10, 80, 80);
   mario_up_rect = GRect(32, BLOCK_SIZE + 4, 80, 80);
   blocks_down_rect = GRect(22, 16, BLOCK_SIZE*2, BLOCK_SIZE + 4);
 #endif
   
-  background_rect = GRect(0, 0, 144, 168);
-  battery_rect = GRect(119, 5, 22, 9);
+  background_rect = GRect(0, 0, screen_size_x, screen_size_y);
+#if !PBL_PLATFORM_CHALK
   phone_battery_rect = GRect(3, 3, 24, 13);
-
+  battery_rect = GRect(119, 5, 22, 9);
+#else
+  phone_battery_rect = GRect(3, 3+80, 24, 13);
+  battery_rect = GRect(119+36, 5+80, 22, 9);
+#endif
   pixel_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_GAMEGIRL_24));
   //pixel_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_EMULOGIC_24));
   pixel_font_small = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_EMULOGIC_8));
@@ -746,7 +772,8 @@ void handle_init()
   if (config_show_weather && config_show_phone_battery)
     accel_tap_service_subscribe(accel_tap_handler);
   
-  request_all();
+  app_timer_register(1000, request_all_on_start, NULL);
+  //request_all();
 
   load_bitmaps(); 
   load_weather_icon();
@@ -886,7 +913,7 @@ void block_up_animation_stopped(Animation *animation, void *data)
 }
 
 void handle_tick(struct tm *tick_time, TimeUnits units_changed)
-{
+{  
 #ifdef DEMO
   if (tick_time->tm_sec % 15 != 0) return;
 #endif

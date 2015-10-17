@@ -23,8 +23,48 @@
     "resources": {
         "media": [
             {
+                "file": "images/watch_battery.png",
+                "name": "IMAGE_WATCH_BATTERY",
+                "type": "png"
+            },
+            {
                 "file": "images/mario_bg_day.png",
                 "name": "IMAGE_BACKGROUND_DAY",
+                "targetPlatforms": [
+                    "aplite",
+                    "basalt",
+                    "chalk"
+                ],
+                "type": "png"
+            },
+            {
+                "file": "images/mario_bg_night.png",
+                "name": "IMAGE_BACKGROUND_NIGHT",
+                "targetPlatforms": [
+                    "aplite",
+                    "basalt",
+                    "chalk"
+                ],
+                "type": "png"
+            },
+            {
+                "file": "images/mario_bg_underground.png",
+                "name": "IMAGE_BACKGROUND_UNDERGROUND",
+                "targetPlatforms": [
+                    "aplite",
+                    "basalt",
+                    "chalk"
+                ],
+                "type": "png"
+            },
+            {
+                "file": "images/mario_bg_castle.png",
+                "name": "IMAGE_BACKGROUND_CASTLE",
+                "targetPlatforms": [
+                    "aplite",
+                    "basalt",
+                    "chalk"
+                ],
                 "type": "png"
             },
             {
@@ -103,11 +143,6 @@
                 "type": "png"
             },
             {
-                "file": "images/watch_battery.png",
-                "name": "IMAGE_WATCH_BATTERY",
-                "type": "png"
-            },
-            {
                 "file": "images/phone_battery.png",
                 "name": "IMAGE_PHONE_BATTERY",
                 "type": "png"
@@ -125,21 +160,6 @@
             {
                 "file": "images/phone_battery_unknown.png",
                 "name": "IMAGE_PHONE_BATTERY_UNKNOWN",
-                "type": "png"
-            },
-            {
-                "file": "images/mario_bg_night_color.png",
-                "name": "IMAGE_BACKGROUND_NIGHT",
-                "type": "png"
-            },
-            {
-                "file": "images/mario_bg_underground_color.png",
-                "name": "IMAGE_BACKGROUND_UNDERGROUND",
-                "type": "png"
-            },
-            {
-                "file": "images/mario_bg_castle_color.png",
-                "name": "IMAGE_BACKGROUND_CASTLE",
                 "type": "png"
             },
             {
@@ -171,10 +191,11 @@
     "shortName": "Mario Time",
     "targetPlatforms": [
         "aplite",
-        "basalt"
+        "basalt",
+        "chalk"
     ],
     "uuid": "43caa750-2896-4f46-94dc-1adbd4bc1ff3",
-    "versionLabel": "3.22",
+    "versionLabel": "3.30",
     "watchapp": {
         "watchface": true
     }

@@ -9,6 +9,7 @@ var options = {
   "config_vibe_hour": false,
   "config_background": 0,
 };
+var weatherAPI = "5d949dcb47bf776e783aa63ed22d4f60";
 
 var locationOptions = { "timeout": 60000, "maximumAge": 60000 * 30 }; 
 
@@ -17,7 +18,7 @@ function locationSuccess(pos) {
   console.log("Location: lat = "+coordinates.latitude+", lon = "+coordinates.longitude);
   console.log("Requesting weather...");
   var req = new XMLHttpRequest();
-  req.open('GET', "http://api.openweathermap.org/data/2.5/weather?lat="+coordinates.latitude+"&lon="+coordinates.longitude, true);
+  req.open('GET', "http://api.openweathermap.org/data/2.5/weather?lat="+coordinates.latitude+"&lon="+coordinates.longitude+"&APPID="+weatherAPI, true);
   req.onreadystatechange = function() {
     if (req.readyState == 4) {
       if(req.status == 200) {
