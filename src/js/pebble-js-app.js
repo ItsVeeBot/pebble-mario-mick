@@ -84,7 +84,7 @@ Pebble.addEventListener("showConfiguration", function() {
     var watch = null;
   }
   var platform = "&platform=" + ((watch != null) ? watch.platform : "unknown");
-  var config_version = "&v=2";
+  var config_version = "&v=3";
   console.log("Showing configuration");
 	Pebble.openURL("http://clusterrr.com/pebble_configs/mario_w.php" + cfg + platform + config_version);
 });

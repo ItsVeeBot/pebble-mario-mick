@@ -82,6 +82,7 @@ static bool config_show_battery = true;
 static bool config_show_phone_battery = false;
 static bool config_show_weather = true;
 static bool config_vibe = false;
+static int config_character = 0;
 static int config_background = 0;
 static int phone_battery_level = -1;
 static bool config_vibe_hour = false;
@@ -126,6 +127,12 @@ static char digits[10][15] = {{1,1,1,1,0,1,1,0,1,1,0,1,1,1,1},{0,0,1,0,0,1,0,0,1
 #define MSG_WEATHER_REQUEST 12
 #define ID_LEFT_INFO_MODE 13
 #define MSG_VIBE_HOUR 14
+#define MSG_CHARACTER 15
+#ifdef DEMO
+  #define MARIO_TIME_UNIT SECOND_UNIT
+#else
+  #define MARIO_TIME_UNIT MINUTE_UNIT
+#endif
 
 void handle_tick(struct tm *tick_time, TimeUnits units_changed);
 
@@ -162,6 +169,7 @@ static void request_all()
 
 static void request_all_on_start(void* data)
 {
+  tick_timer_service_subscribe(MARIO_TIME_UNIT, handle_tick);  
   request_all();
 }
 
@@ -450,6 +458,25 @@ void handle_battery(BatteryChargeState charge_state)
   layer_mark_dirty(battery_layer);
 }
 
+void update_character()
+{
+  if (mario_normal_bmp)
+    gbitmap_destroy(mario_normal_bmp);
+  if (mario_jump_bmp)
+    gbitmap_destroy(mario_jump_bmp);
+  switch (config_character)  
+  {
+    case 1:
+      mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_LUIGI_NORMAL);
+      mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_LUIGI_JUMP);
+      break;
+    default:
+      mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
+      mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
+      break;
+  }
+}
+
 void update_background()
 {
   if (background_day_bmp)
@@ -498,10 +525,6 @@ void update_background()
 
 void load_bitmaps()
 {
-  if (mario_normal_bmp)
-    gbitmap_destroy(mario_normal_bmp);
-  if (mario_jump_bmp)
-    gbitmap_destroy(mario_jump_bmp);
   if (no_phone_bmp)
     gbitmap_destroy(no_phone_bmp);
   if (phone_battery_bmp)
@@ -513,14 +536,13 @@ void load_bitmaps()
   if (block_bmp)
     gbitmap_destroy(block_bmp);
 
-  mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
-  mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
   no_phone_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NO_PHONE);
   phone_battery_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_PHONE_BATTERY);
   phone_battery_unknown_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_PHONE_BATTERY_UNKNOWN);
   watch_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_WATCH_BATTERY);
   battery_charging_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BATTERY_CHARGING);
   block_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BLOCK);
+  update_character();
   update_background();
 }
 
@@ -644,6 +666,13 @@ void in_received_handler(DictionaryIterator *received, void *context) {
     layer_mark_dirty(background_layer);
     persist_write_int(MSG_BACKGROUND, config_background);
   }
+  tuple = dict_find(received, MSG_CHARACTER);
+  if (tuple) {
+    config_character = tuple->value->int8;
+    update_character();
+    layer_mark_dirty(mario_layer);
+    persist_write_int(MSG_CHARACTER, config_character);
+  }  
   tuple = dict_find(received, MSG_BATTERY_ANSWER);
   if (tuple) {
     phone_battery_level = tuple->value->int8;
@@ -691,6 +720,8 @@ void handle_init()
     weather_temperature = persist_read_int(MSG_WEATHER_TEMPERATURE);
   if (persist_exists(ID_LEFT_INFO_MODE))
     left_info_mode = persist_read_int(ID_LEFT_INFO_MODE);
+  if (persist_exists(MSG_CHARACTER))
+    config_character = persist_read_int(MSG_CHARACTER);  
 
   app_message_register_inbox_received(in_received_handler);
   app_message_open(128, 64);
@@ -760,13 +791,6 @@ void handle_init()
   
   window_stack_push(window, false);
 
-#ifdef DEMO
-  #define MARIO_TIME_UNIT SECOND_UNIT
-#else
-  #define MARIO_TIME_UNIT MINUTE_UNIT
-#endif
-
-  tick_timer_service_subscribe(MARIO_TIME_UNIT, handle_tick);  
   bluetooth_connection_service_subscribe(bluetooth_connection_callback);
   battery_state_service_subscribe(handle_battery);
   if (config_show_weather && config_show_phone_battery)
