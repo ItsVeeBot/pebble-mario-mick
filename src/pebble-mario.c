@@ -260,11 +260,7 @@ void blocks_update_callback(Layer *layer, GContext *ctx)
               BLOCK_SIZE,
               layer_frame.size.h - 4);
 
-#if PBL_COLOR
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
-#else
-  graphics_context_set_compositing_mode(ctx, GCompOpAssign);
-#endif
   for (uint8_t i = 0; i < 2; ++i) {
     GRect *rect = block_rect + i;
     graphics_draw_bitmap_in_rect(ctx, block_bmp, *rect);
@@ -279,11 +275,7 @@ void mario_update_callback(Layer *layer, GContext *ctx)
   bmp = mario_is_down ? mario_normal_bmp : mario_jump_bmp;
   destination = GRect(0, 0, gbitmap_get_bounds(bmp).size.w, gbitmap_get_bounds(bmp).size.h);
 
-#if PBL_COLOR
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
-#else
-  graphics_context_set_compositing_mode(ctx, GCompOpAnd);
-#endif
   graphics_draw_bitmap_in_rect(ctx, bmp, destination);
 }
 
@@ -351,12 +343,11 @@ void phone_battery_update_callback(Layer *layer, GContext *ctx)
 #ifdef DEMO
   phone_battery_level = 8;
 #endif
-#if PBL_COLOR
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
+#if PBL_COLOR
   graphics_context_set_fill_color(ctx, GColorWhite);
   graphics_context_set_stroke_color(ctx, GColorWhite);
 #else
-  graphics_context_set_compositing_mode(ctx, GCompOpAssignInverted);
   graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_context_set_stroke_color(ctx, GColorBlack);
 #endif
@@ -435,11 +426,7 @@ void battery_update_callback(Layer *layer, GContext *ctx)
   {
     GRect image_rect = gbitmap_get_bounds(watch_bmp);
     BatteryChargeState charge_state = battery_state_service_peek();
-#if PBL_COLOR
     graphics_context_set_compositing_mode(ctx, GCompOpSet);
-#else
-    graphics_context_set_compositing_mode(ctx, GCompOpAssignInverted);
-#endif
     if (!charge_state.is_charging)
       graphics_draw_bitmap_in_rect(ctx, watch_bmp, image_rect);
     else
