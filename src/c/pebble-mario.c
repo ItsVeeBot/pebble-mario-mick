@@ -110,8 +110,8 @@ static char digits[10][15] = {{1,1,1,1,0,1,1,0,1,1,0,1,1,1,1},{0,0,1,0,0,1,0,0,1
 #endif
 #define GROUND_HEIGHT 26
   
-#define WEATHER_MAX_AGE 60*60*5
-#define WEATHER_UPDATE_INTERVAL 60*60*3
+#define WEATHER_MAX_AGE 60*60*3
+#define WEATHER_UPDATE_INTERVAL 60*60*1
 
 #define MSG_SHOW_NO_PHONE 0
 #define MSG_SHOW_BATTERY 1
@@ -165,6 +165,11 @@ static void request_all()
     }
     app_message_outbox_send();
   }
+}
+
+static void request_all_on_connect(void* data)
+{
+ request_all();
 }
 
 static void request_all_on_start(void* data)
@@ -273,7 +278,8 @@ void mario_update_callback(Layer *layer, GContext *ctx)
   GBitmap *bmp;
 
   bmp = mario_is_down ? mario_normal_bmp : mario_jump_bmp;
-  destination = GRect(0, 0, gbitmap_get_bounds(bmp).size.w, gbitmap_get_bounds(bmp).size.h);
+  GRect bounds = gbitmap_get_bounds(bmp);
+  destination = GRect(40-bounds.size.w/2, 80-bounds.size.h, bounds.size.w, bounds.size.h);
 
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
   graphics_draw_bitmap_in_rect(ctx, bmp, destination);
@@ -328,12 +334,12 @@ void bluetooth_connection_callback(bool connected)
     VibePattern pat = {
       .durations = segments,
       .num_segments = ARRAY_LENGTH(segments),
-    };    
+    };
     vibes_enqueue_custom_pattern(pat);
   }
   
   if (connected)
-    request_all();
+    app_timer_register(5000, request_all_on_connect, NULL);
   else phone_battery_level = -1;
   layer_mark_dirty(phone_battery_layer);
 }
@@ -451,12 +457,27 @@ void update_character()
     gbitmap_destroy(mario_normal_bmp);
   if (mario_jump_bmp)
     gbitmap_destroy(mario_jump_bmp);
-  switch (config_character)  
+
+  int character = config_character;
+  
+  // 1st April joke :)
+  time_t t;
+  time(&t); 
+  struct tm * tick_time = localtime(&t);
+  if (tick_time->tm_year == 116 && tick_time->tm_mon == 3 && tick_time->tm_mday == 1) character = 2;
+  
+  switch (character)
   {
+#if PBL_COLOR
     case 1:
       mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_LUIGI_NORMAL);
       mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_LUIGI_JUMP);
       break;
+    case 2:
+      mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BOWSER_NORMAL);
+      mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BOWSER_JUMP);
+      break;
+#endif
     default:
       mario_normal_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_NORMAL);
       mario_jump_bmp = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MARIO_JUMP);
@@ -535,6 +556,13 @@ void load_bitmaps()
 
 void load_weather_icon()
 {
+  int weather_age = time(NULL)-weather_last_update;
+  if ((weather_age > WEATHER_MAX_AGE) && (weather_icon_id >= 0))
+  {
+    weather_icon_id = -1;
+    weather_temperature = -100;
+  }
+
 #ifdef DEMO
   weather_icon_id = 9;
   weather_temperature = -23;
@@ -728,11 +756,11 @@ void handle_init()
 
   blocks_up_rect = GRect(22+offset_x, -10, BLOCK_SIZE*2, BLOCK_SIZE + 4);
 #if PBL_COLOR
-  mario_down_rect = GRect(32 + 15 + offset_x, 168-GROUND_HEIGHT-76 + 28 + 10 + offset_y, 80, 80);
-  mario_up_rect = GRect(32 + 15 + offset_x, BLOCK_SIZE + 4 + 10 + offset_y, 80, 80);
+  mario_down_rect = GRect(32 + offset_x, 168 - GROUND_HEIGHT-76 + 28 + 10 + offset_y - 32, 80, 80);
+  mario_up_rect = GRect(32 + offset_x, BLOCK_SIZE + 4 + 10 + offset_y - 32, 80, 80);
   blocks_down_rect = GRect(22 + offset_x, 25 + offset_y, BLOCK_SIZE*2, BLOCK_SIZE + 4);
 #else
-  mario_down_rect = GRect(32, 168-GROUND_HEIGHT-80 + 10, 80, 80);
+  mario_down_rect = GRect(32, 168 - GROUND_HEIGHT - 80 + 10, 80, 80);
   mario_up_rect = GRect(32, BLOCK_SIZE + 4, 80, 80);
   blocks_down_rect = GRect(22, 16, BLOCK_SIZE*2, BLOCK_SIZE + 4);
 #endif
@@ -784,7 +812,6 @@ void handle_init()
     accel_tap_service_subscribe(accel_tap_handler);
   
   app_timer_register(1000, request_all_on_start, NULL);
-  //request_all();
 
   load_bitmaps(); 
   load_weather_icon();
@@ -985,8 +1012,6 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed)
   }
   if ((weather_age > WEATHER_MAX_AGE) && (weather_icon_id >= 0))
   {
-    weather_icon_id = -1;
-    weather_temperature = -100;
     load_weather_icon();
     if (config_show_weather)
       layer_mark_dirty(phone_battery_layer);
@@ -995,6 +1020,7 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed)
   if (units_changed & HOUR_UNIT)
   {
     need_update_background = 1;
+    update_character(); // for 1st April
     if (config_vibe_hour)
     {
       static const uint32_t const segments[] = { 50, 100, 50, 100, 50, 100, 50, 100, 50 };

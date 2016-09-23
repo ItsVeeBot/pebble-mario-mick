@@ -1,0 +1,265 @@
+{
+    "author": "Cluster",
+    "dependencies": {},
+    "keywords": [],
+    "name": "mario-time",
+    "pebble": {
+        "capabilities": [
+            "location",
+            "configurable"
+        ],
+        "displayName": "Mario Time",
+        "enableMultiJS": true,
+        "messageKeys": {
+            "battery_request": 4,
+            "config_background": 7,
+            "config_character": 15,
+            "config_show_battery": 1,
+            "config_show_no_phone": 0,
+            "config_show_phone_battery": 6,
+            "config_show_weather": 8,
+            "config_temperature_units": 999,
+            "config_vibe": 2,
+            "config_vibe_hour": 14,
+            "weather_icon_id": 10,
+            "weather_request": 12,
+            "weather_temperature": 11
+        },
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/bowser-jump",
+                    "name": "IMAGE_BOWSER_JUMP",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/bowser-normal",
+                    "name": "IMAGE_BOWSER_NORMAL",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/watch_battery.png",
+                    "name": "IMAGE_WATCH_BATTERY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/luigi-jump.png",
+                    "name": "IMAGE_LUIGI_JUMP",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/luigi-normal.png",
+                    "name": "IMAGE_LUIGI_NORMAL",
+                    "storageFormat": "png",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/mario_bg_day.png",
+                    "name": "IMAGE_BACKGROUND_DAY",
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk",
+                        "diorite"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_few_clouds_night.png",
+                    "name": "IMAGE_WEATHER_FEW_CLOUDS_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_rain_night.png",
+                    "name": "IMAGE_WEATHER_RAIN_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_clear_sky_night.png",
+                    "name": "IMAGE_WEATHER_CLEAR_SKY_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_unknown.png",
+                    "name": "IMAGE_WEATHER_UNKNOWN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_thunderstorm.png",
+                    "name": "IMAGE_WEATHER_THUNDERSTORM",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_snow.png",
+                    "name": "IMAGE_WEATHER_SNOW",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_shower_rain.png",
+                    "name": "IMAGE_WEATHER_SHOWER_RAIN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_scattered_clouds.png",
+                    "name": "IMAGE_WEATHER_SCATTERED_CLOUDS",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_rain_day.png",
+                    "name": "IMAGE_WEATHER_RAIN_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/mario-jump-bw.png",
+                    "name": "IMAGE_MARIO_JUMP",
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/mario-normal-bw.png",
+                    "name": "IMAGE_MARIO_NORMAL",
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/menuicon.png",
+                    "menuIcon": true,
+                    "name": "IMAGE_MENU_ICON",
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/mario_bg_underground.png",
+                    "name": "IMAGE_BACKGROUND_UNDERGROUND",
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/mario_bg_castle.png",
+                    "name": "IMAGE_BACKGROUND_CASTLE",
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/mario_bg_night.png",
+                    "name": "IMAGE_BACKGROUND_NIGHT",
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "chalk"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_mist.png",
+                    "name": "IMAGE_WEATHER_MIST",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_few_clouds_day.png",
+                    "name": "IMAGE_WEATHER_FEW_CLOUDS_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_clear_sky_day.png",
+                    "name": "IMAGE_WEATHER_CLEAR_SKY_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/weather_broken_clouds.png",
+                    "name": "IMAGE_WEATHER_BROKEN_CLOUDS",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/phone_battery.png",
+                    "name": "IMAGE_PHONE_BATTERY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/no_phone.png",
+                    "name": "IMAGE_NO_PHONE",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/battery_charging.png",
+                    "name": "IMAGE_BATTERY_CHARGING",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/phone_battery_unknown.png",
+                    "name": "IMAGE_PHONE_BATTERY_UNKNOWN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "characterRegex": "[,0-9A-Z]",
+                    "file": "fonts/emulogic.ttf",
+                    "name": "FONT_EMULOGIC_8",
+                    "type": "font"
+                },
+                {
+                    "file": "images/mario_block_48_bw.png",
+                    "name": "IMAGE_BLOCK",
+                    "type": "bitmap"
+                },
+                {
+                    "characterRegex": "[0-9]",
+                    "file": "fonts/Gamegirl.ttf",
+                    "name": "FONT_GAMEGIRL_24",
+                    "type": "font"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk",
+            "diorite"
+        ],
+        "uuid": "43caa750-2896-4f46-94dc-1adbd4bc1ff3",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "3.34.0"
+}
