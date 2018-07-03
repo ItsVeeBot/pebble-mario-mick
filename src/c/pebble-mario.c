@@ -1007,14 +1007,16 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed)
   int weather_age = time(NULL)-weather_last_update;
   if (units_changed & MINUTE_UNIT)
   {
-    if ((tick_time->tm_min % 30 == 0) || ((tick_time->tm_min % 5 == 0) && (weather_age > WEATHER_UPDATE_INTERVAL)))
-        request_all();
+    if (
+         (config_show_phone_battery && ((phone_battery_level < 0) || (tick_time->tm_min % 30 == 0)))
+         || (config_show_weather && (tick_time->tm_min % 5 == 0) && (weather_age > WEATHER_UPDATE_INTERVAL))
+       )
+      request_all();
   }
-  if ((weather_age > WEATHER_MAX_AGE) && (weather_icon_id >= 0))
+  if (config_show_weather && (weather_age > WEATHER_MAX_AGE) && (weather_icon_id >= 0))
   {
     load_weather_icon();
-    if (config_show_weather)
-      layer_mark_dirty(phone_battery_layer);
+    layer_mark_dirty(phone_battery_layer);
   }
   
   if (units_changed & HOUR_UNIT)
